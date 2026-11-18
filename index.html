@@ -291,6 +291,168 @@
             box-shadow: 0 1px 0 #1a1c2c;
         }
 
+        /* ================= TWO-STAGE OPENING CUTSCENE ================= */
+  #cutsceneOverlay {
+    position: absolute;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: max(10px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+    pointer-events: auto;
+    touch-action: manipulation;
+    cursor: pointer;
+  }
+
+  #cutsceneHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    z-index: 52;
+  }
+
+  #cutsceneLocation {
+    background: rgba(16, 10, 24, 0.90);
+    border: 2px solid #ffd166;
+    color: #ffd166;
+    font-size: clamp(7px, 1.5vw, 10px);
+    padding: 6px 10px;
+    border-radius: 6px;
+    text-shadow: 2px 2px 0 #07040c;
+  }
+
+  #skipCutsceneBtn {
+    background: rgba(24, 14, 34, 0.95);
+    border: 2px solid #ffd166;
+    color: #ffd166;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-family: 'Press Start 2P', monospace;
+    font-size: clamp(8px, 1.6vw, 10px);
+    cursor: pointer;
+    box-shadow: 0 3px 0 #07040c;
+    pointer-events: auto;
+    touch-action: manipulation;
+    z-index: 55;
+  }
+
+  #skipCutsceneBtn:active {
+    transform: translateY(2px);
+  }
+
+  #cutscenePortraits {
+    flex: 1;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    padding: 0 clamp(6px, 3vw, 28px);
+    pointer-events: none;
+  }
+
+  .portrait-card {
+    width: clamp(84px, 16vw, 120px);
+    height: clamp(84px, 16vw, 120px);
+    background: radial-gradient(circle at 50% 38%, #3c2254 0%, #190d24 85%);
+    border: 3px solid #ffd166;
+    box-shadow: inset 0 0 0 2px #6b4416, 0 5px 14px rgba(0, 0, 0, 0.85);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: -4px;
+    animation: popPortrait 0.22s ease-out;
+  }
+
+  .portrait-card.orion {
+    background: radial-gradient(circle at 50% 38%, #4d1924 0%, #17080c 85%);
+    border-color: #ff6b4a;
+    box-shadow: inset 0 0 0 2px #7a1626, 0 5px 14px rgba(0, 0, 0, 0.85);
+  }
+
+  .portrait-card canvas {
+    width: 88%;
+    height: 88%;
+    image-rendering: pixelated;
+  }
+
+  @keyframes popPortrait {
+    0% { transform: translateY(14px) scale(0.92); opacity: 0; }
+    100% { transform: translateY(0) scale(1); opacity: 1; }
+  }
+
+  #parchmentScroll {
+    position: relative;
+    width: 100%;
+    min-height: clamp(78px, 23vh, 106px);
+    background: linear-gradient(180deg, #f6e7c1 0%, #e7ce96 76%, #d2ae6e 100%);
+    border: 3px solid #7a4b1d;
+    box-shadow:
+      inset 0 0 0 2px #fff6db,
+      0 0 0 2px #291606,
+      0 6px 18px rgba(0, 0, 0, 0.85);
+    border-radius: 8px;
+    padding: 10px 16px 11px 16px;
+    color: #241205;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    z-index: 53;
+  }
+
+  #parchmentScroll::before,
+  #parchmentScroll::after {
+    content: '';
+    position: absolute;
+    top: -5px;
+    bottom: -5px;
+    width: 10px;
+    background: linear-gradient(90deg, #875320, #ddb978, #78481a);
+    border: 2px solid #291606;
+    border-radius: 5px;
+  }
+
+  #parchmentScroll::before { left: -7px; }
+  #parchmentScroll::after { right: -7px; }
+
+  #speakerTag {
+    align-self: flex-start;
+    background: #47220f;
+    color: #ffd166;
+    border: 2px solid #d49b35;
+    border-radius: 5px;
+    padding: 3px 9px;
+    font-size: clamp(7px, 1.5vw, 10px);
+    margin-bottom: 5px;
+  }
+
+  #speakerTag.orion {
+    background: #5e1622;
+    color: #ff9e7d;
+    border-color: #ff6b4a;
+  }
+
+  #dialogueText {
+    font-size: clamp(8px, 1.7vw, 11px);
+    line-height: 1.55;
+    color: #241205;
+    text-align: left;
+    min-height: 2.8em;
+  }
+
+  #dialoguePrompt {
+    align-self: flex-end;
+    font-size: clamp(7px, 1.35vw, 9px);
+    color: #8f1d2c;
+    margin-top: 4px;
+    animation: pulseText 0.9s steps(2, start) infinite;
+  }
+
+  @keyframes pulseText {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.25; }
+  }
         /* Corner Translucent Landscape Touch Controls */
         #touch-controls {
             position: absolute;
@@ -1133,6 +1295,81 @@ const SPRITES = {
     ]
 };
 
+const PORTRAITS = {
+    king: [
+      ".......KK..KK..KK.......",
+      "......KYYKKYYKKYYK......",
+      "......KYYYYYYYYYYK......",
+      "......KYRYYRYYRYYK......",
+      "......KYYYYYYYYYYK......",
+      ".....KHHHHHHHHHHHHK.....",
+      "....KHHFFFFFFFFFFHHK....",
+      "....KHFFKKFFFFKKFFHK....",
+      "....KHFFKWFFFFKWFFHK....",
+      "....KHFFFFFFFFFFFFHK....",
+      "....KHHFFFFOOFFFFHHK....",
+      "...KHHHHHFFFFFFHHHHHK...",
+      "..KHHHHHHHHHHHHHHHHHHK..",
+      "..KHHHHHHHHHHHHHHHHHHK..",
+      "...KHHHHHHHHHHHHHHHHK...",
+      "....KHHHHHHHHHHHHHHK....",
+      "..KKKEEEEYYYYYYEEEEKKK..",
+      ".KEEEEEEYYYYYYYYEEEEEK..",
+      "KWWWWEEEYYYYYYYYEEEWWWWK",
+      "KWKWKEEEYYYYYYYYEEEKWKWK",
+      "KWWWWEEEEEEEEEEEEEEWWWWK",
+      "KEEEEEEEEEEEEEEEEEEEEEEK",
+      "KEEEEEEEEEEEEEEEEEEEEEEK",
+      "KKKKKKKKKKKKKKKKKKKKKKKK"
+    ],
+    orion: [
+      "..........KKKK..........",
+      ".........KRRRRK.........",
+      "........KRRRRRRK........",
+      ".......KRRRRRRRRK.......",
+      "......KRRRRRRRRRRK......",
+      ".....KRRRRRRRRRRRRK.....",
+      "....KRRRRRRRRRRRRRRK....",
+      "....KRRRKKKKKKKKRRRK....",
+      "...KRRRKKKKKKKKKKRRRK...",
+      "...KRRKKKCCKKCCKKKRRK...",
+      "...KRRKKCCCCCCCCKKRRK...",
+      "...KRRKKKKKKKKKKKKRRK...",
+      "....KRRRKKKKKKKKRRRK....",
+      "....KRRRRRRRRRRRRRRK....",
+      "...KRRRRRRRRRRRRRRRRK...",
+      "..KROORRRRRRRRRRRROORK..",
+      ".KROOORRRRRRRRRRRROOORK.",
+      ".KRRRRRRRRYYYYRRRRRRRRK.",
+      "KRRRRRRRRYYYYYYRRRRRRRRK",
+      "KRRRRRRRRRYYYYRRRRRRRRRK",
+      "KRRRRRRRRRRRRRRRRRRRRRRK",
+      "KRRRRRRRRRRRRRRRRRRRRRRK",
+      "KRRRRRRRRRRRRRRRRRRRRRRK",
+      "KKKKKKKKKKKKKKKKKKKKKKKK"
+    ]
+  };
+
+  function paintPortraitCanvases() {
+    const paint = (id, mat) => {
+      const c = document.getElementById(id);
+      if (!c) return;
+      const pctx = c.getContext('2d');
+      pctx.clearRect(0, 0, c.width, c.height);
+      for (let r = 0; r < mat.length; r++) {
+        for (let col = 0; col < mat[r].length; col++) {
+          const color = PAL[mat[r][col]];
+          if (color) {
+            pctx.fillStyle = color;
+            pctx.fillRect(col, r, 1, 1);
+          }
+        }
+      }
+    };
+    paint('kingPortraitCanvas', PORTRAITS.king);
+    paint('orionPortraitCanvas', PORTRAITS.orion);
+  }
+    
 const spriteCache = {};
 
 function preRenderSprites() {
@@ -1167,6 +1404,400 @@ function preRenderSprites() {
     }
 }
 
+    // =========================================================================
+  // 4. TWO-STAGE OPENING CUTSCENE
+  // =========================================================================
+  const CUTSCENE_LINES = [
+    {
+      scene: 'kingdom',
+      location: 'KINGDOM OF AETHELGARD',
+      speaker: 'narrator',
+      tag: 'ROYAL CHRONICLE',
+      text: 'The Kingdom of Aethelgard... gleaming spires of white marble and gold, standing watch over the shadowed wilds of The Veridian Abyss.'
+    },
+    {
+      scene: 'throne',
+      location: 'ROYAL COURT OF AETHELGARD',
+      speaker: 'king',
+      tag: 'KING NORMAN II',
+      text: 'Ah, Orion! Thank the stars you have answered my call. Evil forces have breached our borders and kidnapped my daughter, Princess Nova, dragging her deep into the perilous Veridian Abyss!'
+    },
+    {
+      scene: 'throne',
+      location: 'ROYAL COURT OF AETHELGARD',
+      speaker: 'king',
+      tag: 'KING NORMAN II',
+      text: 'I have already sent my greatest knight, Sir Moosimus, to find Nova, but he has not returned. Keep an eye out for him in the wilds and help him return if you can.'
+    },
+    {
+      scene: 'throne',
+      location: 'ROYAL COURT OF AETHELGARD',
+      speaker: 'orion',
+      tag: 'ORION',
+      text: 'Fear not, Your Majesty. No goblin horde or flying beast shall stop me. I will find Sir Moosimus and bring Princess Nova home.'
+    },
+    {
+      scene: 'throne',
+      location: 'ROYAL COURT OF AETHELGARD',
+      speaker: 'king',
+      tag: 'KING NORMAN II',
+      text: 'Brave wizard... Should you succeed, the kingdom of Aethelgard and its throne will be forever in your debt. May the ancient magic guide your steps!'
+    }
+  ];
+
+  const cutsceneState = {
+    index: 0,
+    charIndex: 0,
+    tick: 0,
+    onDone: null
+  };
+
+  function updateCutsceneUI() {
+    const entry = CUTSCENE_LINES[cutsceneState.index];
+    if (!entry) return;
+
+    const locEl = document.getElementById('cutsceneLocation');
+    const tagEl = document.getElementById('speakerTag');
+    const textEl = document.getElementById('dialogueText');
+    const promptEl = document.getElementById('dialoguePrompt');
+    const kingCard = document.getElementById('kingPortraitCard');
+    const orionCard = document.getElementById('orionPortraitCard');
+
+    if (locEl) locEl.textContent = entry.location;
+    if (tagEl) {
+      tagEl.textContent = entry.tag;
+      if (entry.speaker === 'orion') tagEl.classList.add('orion');
+      else tagEl.classList.remove('orion');
+    }
+
+    if (kingCard && orionCard) {
+      if (entry.speaker === 'king') {
+        kingCard.classList.remove('hidden');
+        orionCard.classList.add('hidden');
+      } else if (entry.speaker === 'orion') {
+        orionCard.classList.remove('hidden');
+        kingCard.classList.add('hidden');
+      } else {
+        kingCard.classList.add('hidden');
+        orionCard.classList.add('hidden');
+      }
+    }
+
+    if (textEl) textEl.textContent = entry.text.slice(0, cutsceneState.charIndex);
+    if (promptEl) {
+      if (cutsceneState.charIndex < entry.text.length) {
+        promptEl.textContent = 'TAP TO FAST-FORWARD ▶▶';
+      } else if (cutsceneState.index < CUTSCENE_LINES.length - 1) {
+        promptEl.textContent = 'TAP TO CONTINUE ▼';
+      } else {
+        promptEl.textContent = 'TAP TO ENTER THE JUNGLE ▶';
+      }
+    }
+  }
+
+  function startOpeningCutscene(onDone) {
+    sfx.unlock();
+    sfx.chime();
+    cutsceneState.index = 0;
+    cutsceneState.charIndex = 0;
+    cutsceneState.tick = 0;
+    cutsceneState.onDone = onDone;
+
+    gameState = 'CUTSCENE';
+    hideOverlay('startOverlay');
+    hideOverlay('pauseOverlay');
+    hideOverlay('gameoverOverlay');
+    hideOverlay('victoryOverlay');
+
+    document.getElementById('hud').classList.add('hidden');
+    document.getElementById('touchControls').classList.add('hidden');
+    const csOverlay = document.getElementById('cutsceneOverlay');
+    csOverlay.style.display = 'flex';
+    csOverlay.classList.remove('hidden');
+
+    paintPortraitCanvases();
+    updateCutsceneUI();
+  }
+
+  function advanceCutscene() {
+    if (gameState !== 'CUTSCENE') return;
+    const entry = CUTSCENE_LINES[cutsceneState.index];
+    if (!entry) {
+      endCutscene();
+      return;
+    }
+    if (cutsceneState.charIndex < entry.text.length) {
+      cutsceneState.charIndex = entry.text.length;
+      updateCutsceneUI();
+      return;
+    }
+    if (cutsceneState.index < CUTSCENE_LINES.length - 1) {
+      cutsceneState.index++;
+      cutsceneState.charIndex = 0;
+      cutsceneState.tick = 0;
+      sfx.blip(CUTSCENE_LINES[cutsceneState.index].speaker);
+      updateCutsceneUI();
+    } else {
+      endCutscene();
+    }
+  }
+
+  function endCutscene() {
+    const csOverlay = document.getElementById('cutsceneOverlay');
+    csOverlay.classList.add('hidden');
+    csOverlay.style.display = 'none';
+    document.getElementById('hud').classList.remove('hidden');
+    document.getElementById('touchControls').classList.remove('hidden');
+
+    const cb = cutsceneState.onDone;
+    cutsceneState.onDone = null;
+    if (typeof cb === 'function') cb();
+    else beginCampaign(0, { score: 0, gems: 0 });
+  }
+
+  function stepCutscene() {
+    const entry = CUTSCENE_LINES[cutsceneState.index];
+    if (!entry) return;
+    if (cutsceneState.charIndex < entry.text.length) {
+      cutsceneState.tick++;
+      if (cutsceneState.tick >= 2) {
+        cutsceneState.tick = 0;
+        cutsceneState.charIndex++;
+        if (cutsceneState.charIndex % 3 === 0) sfx.blip(entry.speaker);
+        updateCutsceneUI();
+      }
+    }
+  }
+
+  // Stage 1 Cutscene Canvas: Wide Establishing Shot of Aethelgard & Distant Veridian Abyss
+  function renderAethelgardPanorama(ctx, w, h, frame) {
+    // Twilight sky over Aethelgard
+    const sky = ctx.createLinearGradient(0, 0, 0, h * 0.72);
+    sky.addColorStop(0, '#0a162e');
+    sky.addColorStop(0.5, '#1c3663');
+    sky.addColorStop(0.85, '#46618f');
+    sky.addColorStop(1, '#8493b2');
+    ctx.fillStyle = sky;
+    ctx.fillRect(0, 0, w, h);
+
+    // Stars & golden crescent moon
+    const starCoords = [
+      [0.07, 0.12], [0.18, 0.21], [0.29, 0.09], [0.42, 0.18], [0.53, 0.10],
+      [0.64, 0.20], [0.75, 0.11], [0.88, 0.19], [0.94, 0.09]
+    ];
+    starCoords.forEach(([sx, sy], i) => {
+      ctx.fillStyle = Math.sin(frame * 0.07 + i) > 0 ? '#fffbeb' : '#94a3b8';
+      ctx.fillRect(Math.round(w * sx), Math.round(h * sy), i % 2 === 0 ? 2 : 1, i % 2 === 0 ? 2 : 1);
+    });
+
+    const mx = Math.round(w * 0.80);
+    const my = Math.round(h * 0.16);
+    ctx.fillStyle = 'rgba(255, 209, 102, 0.18)';
+    ctx.fillRect(mx - 10, my - 10, 20, 20);
+    ctx.fillStyle = '#ffd166';
+    ctx.fillRect(mx - 6, my - 6, 12, 12);
+    ctx.fillStyle = '#182f57';
+    ctx.fillRect(mx - 2, my - 5, 7, 9);
+
+    // Distant mountain silhouettes
+    ctx.fillStyle = '#283d63';
+    for (let x = -12; x < w + 40; x += 42) {
+      const peakH = 30 + ((Math.abs(x * 11) % 3) * 9);
+      for (let r = 0; r < peakH; r += 2) {
+        const span = Math.round((r / peakH) * 44);
+        ctx.fillRect(x + 21 - span / 2, Math.round(h * 0.56) - peakH + r, span, 2);
+      }
+    }
+
+    // Distant Jungle Horizon (The Veridian Abyss on right)
+    const horizonY = Math.round(h * 0.56);
+    const jungleX = Math.round(w * 0.46);
+    ctx.fillStyle = '#0e2d1d';
+    ctx.fillRect(jungleX, horizonY - 5, w - jungleX, 34);
+    for (let tx = jungleX; tx < w + 12; tx += 11) {
+      const th = 9 + ((tx * 7) % 10);
+      ctx.fillStyle = '#16422b';
+      ctx.fillRect(tx, horizonY - th, 13, th + 12);
+      ctx.fillStyle = '#2d7a47';
+      ctx.fillRect(tx + 2, horizonY - th + 2, 8, 4);
+    }
+
+    // Distant temple ruins peeking through the jungle canopy
+    const ruinX = Math.round(w * 0.82);
+    ctx.fillStyle = '#334155';
+    ctx.fillRect(ruinX, horizonY - 16, 18, 12);
+    ctx.fillRect(ruinX + 4, horizonY - 21, 10, 5);
+    ctx.fillStyle = '#80ed99';
+    ctx.fillRect(ruinX + 7, horizonY - 13, 4, 4);
+
+    // Emerald Valley & Winding Road to the Jungle
+    ctx.fillStyle = '#18472e';
+    ctx.fillRect(0, horizonY + 12, w, h - (horizonY + 12));
+    ctx.fillStyle = '#236340';
+    ctx.fillRect(0, horizonY + 18, w, 18);
+
+    ctx.fillStyle = '#a8b5c7';
+    for (let s = 0; s < 34; s++) {
+      const t = s / 34;
+      const rx = Math.round(w * 0.35 + t * (w * 0.44) + Math.sin(t * Math.PI * 1.3) * 12);
+      const ry = Math.round(horizonY + 13 + t * 22);
+      ctx.fillRect(rx, ry, Math.round(6 + t * 9), 3);
+    }
+
+    // White Marble Citadel Terrace
+    const baseX = Math.round(w * 0.05);
+    const baseY = horizonY + 15;
+    const wallW = Math.round(w * 0.38);
+    ctx.fillStyle = '#64748b';
+    ctx.fillRect(baseX, baseY - 11, wallW + 8, 32);
+    ctx.fillStyle = '#e2e8f0';
+    ctx.fillRect(baseX + 3, baseY - 13, wallW + 2, 13);
+
+    // Helper for White Marble Spires with Gleaming Golden Roofs & Trim
+    const drawSpire = (sx, sy, sw, sh, roofH) => {
+      // White marble tower shaft
+      ctx.fillStyle = '#f8fafc';
+      ctx.fillRect(sx, sy - sh, sw, sh);
+      // Soft marble shading
+      ctx.fillStyle = '#cbd5e1';
+      ctx.fillRect(sx + Math.floor(sw * 0.68), sy - sh, Math.ceil(sw * 0.32), sh);
+
+      // Golden bands & trim
+      ctx.fillStyle = '#eab308';
+      ctx.fillRect(sx - 1, sy - sh, sw + 2, 2);
+      ctx.fillRect(sx - 1, sy - Math.floor(sh * 0.5), sw + 2, 2);
+      ctx.fillStyle = '#fef08a';
+      ctx.fillRect(sx - 1, sy - sh, Math.floor(sw * 0.7), 1);
+
+      // Arched palace windows
+      ctx.fillStyle = '#1e3a8a';
+      const ww = Math.max(2, Math.floor(sw * 0.24));
+      const wx = sx + Math.floor((sw - ww) / 2);
+      ctx.fillRect(wx, sy - Math.floor(sh * 0.78), ww, 5);
+      if (sh > 26) ctx.fillRect(wx, sy - Math.floor(sh * 0.35), ww, 5);
+
+      // Golden conical roof
+      for (let r = 0; r < roofH; r++) {
+        const rw = Math.max(1, Math.round((sw + 4) * (r / roofH)));
+        const rx = sx + Math.floor(sw / 2) - Math.floor(rw / 2);
+        ctx.fillStyle = r < roofH * 0.45 ? '#fde047' : '#ca8a04';
+        ctx.fillRect(rx, sy - sh - roofH + r, rw, 1);
+      }
+
+      // Golden finial & royal crimson pennant
+      const tx = sx + Math.floor(sw / 2);
+      const ty = sy - sh - roofH;
+      ctx.fillStyle = '#fef9c3';
+      ctx.fillRect(tx, ty - 4, 1, 4);
+      const flutter = Math.round(Math.sin(frame * 0.14 + sx));
+      ctx.fillStyle = '#c81d3a';
+      ctx.fillRect(tx + 1, ty - 4, 4, 2);
+      ctx.fillRect(tx + 4, ty - 4 + flutter, 2, 1);
+    };
+
+    const wallX = baseX + 5;
+    const wallY = baseY - 13;
+    ctx.fillStyle = '#f1f5f9';
+    ctx.fillRect(wallX, wallY - 12, wallW, 12);
+    ctx.fillStyle = '#eab308';
+    ctx.fillRect(wallX, wallY - 12, wallW, 2);
+    for (let bx = wallX; bx < wallX + wallW - 2; bx += 6) {
+      ctx.fillStyle = '#f8fafc';
+      ctx.fillRect(bx, wallY - 15, 3, 3);
+      ctx.fillStyle = '#fde047';
+      ctx.fillRect(bx, wallY - 16, 3, 1);
+    }
+
+    // Castle Gate
+    const gateX = wallX + Math.round(wallW * 0.68);
+    ctx.fillStyle = '#1e1b18';
+    ctx.fillRect(gateX, wallY - 9, 9, 9);
+    ctx.fillStyle = '#ffd166';
+    ctx.fillRect(gateX - 1, wallY - 10, 11, 1);
+
+    // Cluster of White Marble & Gold Spires
+    drawSpire(wallX + 4, wallY - 10, 12, 32, 14);
+    drawSpire(wallX + 20, wallY - 12, 16, 44, 18);
+    drawSpire(wallX + 39, wallY - 14, 20, 56, 22);
+    drawSpire(wallX + 63, wallY - 12, 15, 38, 16);
+    drawSpire(wallX + 82, wallY - 10, 11, 28, 12);
+  }
+
+  // Stage 2 Cutscene Canvas: Torch-lit Throne Room of Aethelgard
+  function renderThroneRoom(ctx, w, h, frame) {
+    const grad = ctx.createLinearGradient(0, 0, 0, h);
+    grad.addColorStop(0, '#160d24');
+    grad.addColorStop(0.65, '#261738');
+    grad.addColorStop(1, '#120a1c');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, w, h);
+
+    // Stone masonry lines
+    ctx.fillStyle = '#1e122e';
+    for (let y = 14; y < h - 40; y += 16) {
+      ctx.fillRect(0, y, w, 2);
+      const off = (y % 32 === 0) ? 0 : 18;
+      for (let x = off; x < w; x += 36) ctx.fillRect(x, y, 2, 16);
+    }
+
+    // Palace windows overlooking the jungle
+    [Math.round(w * 0.25), Math.round(w * 0.75)].forEach((wx) => {
+      ctx.fillStyle = '#3b2554';
+      ctx.fillRect(wx - 25, 22, 50, 82);
+      ctx.fillStyle = '#0d2936';
+      ctx.fillRect(wx - 22, 25, 44, 76);
+      ctx.fillStyle = '#ffd166';
+      ctx.fillRect(wx + 8, 34, 7, 7);
+      ctx.fillStyle = '#18472e';
+      ctx.fillRect(wx - 22, 80, 44, 21);
+      ctx.fillStyle = '#4c326b';
+      ctx.fillRect(wx - 1, 25, 2, 76);
+      ctx.fillRect(wx - 22, 60, 44, 2);
+    });
+
+    // Royal banners
+    [Math.round(w * 0.10), Math.round(w * 0.90)].forEach((bx) => {
+      ctx.fillStyle = '#ffd166';
+      ctx.fillRect(bx - 15, 18, 30, 4);
+      ctx.fillStyle = '#6a2c91';
+      ctx.fillRect(bx - 12, 22, 24, 72);
+      ctx.fillStyle = '#ffd166';
+      ctx.fillRect(bx - 12, 22, 2, 72);
+      ctx.fillRect(bx + 10, 22, 2, 72);
+      ctx.fillRect(bx - 4, 42, 8, 10);
+    });
+
+    // Throne silhouette
+    const cx = Math.round(w * 0.5);
+    ctx.fillStyle = '#3d1c2e';
+    ctx.fillRect(cx - 24, 34, 48, 96);
+    ctx.fillStyle = '#ffd166';
+    ctx.fillRect(cx - 26, 30, 52, 5);
+    ctx.fillRect(cx - 26, 30, 4, 100);
+    ctx.fillRect(cx + 22, 30, 4, 100);
+
+    // Wall torches
+    [Math.round(w * 0.39), Math.round(w * 0.61)].forEach((tx) => {
+      ctx.fillStyle = '#5c6b73';
+      ctx.fillRect(tx - 2, 64, 4, 16);
+      const fl = Math.sin(frame * 0.35 + tx) * 2;
+      ctx.fillStyle = 'rgba(255, 107, 74, 0.24)';
+      ctx.fillRect(tx - 14, 42 + fl, 28, 28);
+      ctx.fillStyle = '#ff6b4a';
+      ctx.fillRect(tx - 5, 52 + fl * 0.5, 10, 12);
+      ctx.fillStyle = '#ffd166';
+      ctx.fillRect(tx - 3, 55 + fl * 0.5, 6, 8);
+    });
+
+    // Royal floor & red carpet
+    const fy = h - 42;
+    ctx.fillStyle = '#2d2340';
+    ctx.fillRect(0, fy, w, 42);
+    ctx.fillStyle = '#9e1928';
+    ctx.fillRect(Math.round(w * 0.14), fy + 4, Math.round(w * 0.72), 38);
+    ctx.fillStyle = '#ffd166';
+    ctx.fillRect(Math.round(w * 0.14), fy + 4, Math.round(w * 0.72), 2);
+  }
 // --- 3. 4-STAGE PROGRESSIVE JUNGLE CAMPAIGN ---
 const LEVELS = [
     // LEVEL 1: EASY (Static mossy jungle terrain, grounded crystal spikes, non-shooting pteros, healing flowers, 5 HP)
