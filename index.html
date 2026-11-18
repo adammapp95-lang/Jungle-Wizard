@@ -342,19 +342,10 @@
             box-shadow: 0 5px 0 rgba(60, 18, 34, 0.65);
         }
 
-        .touch-btn.fire-btn {
-            width: 62px;
-            height: 62px;
-            background: rgba(212, 92, 34, 0.58);
-            border-color: rgba(255, 205, 117, 0.72);
-            box-shadow: 0 5px 0 rgba(74, 24, 12, 0.68);
-            color: #ffcd75;
-        }
-
         /* Fiery Force Field Button (Unlocks in Level 3 & Level 4) */
         .touch-btn.shield-btn {
-            width: 62px;
-            height: 62px;
+            width: 66px;
+            height: 66px;
             background: rgba(180, 72, 34, 0.64);
             border-color: rgba(255, 205, 117, 0.8);
             box-shadow: 0 5px 0 rgba(74, 24, 12, 0.72);
@@ -493,7 +484,7 @@
                 Conquer 4 escalating jungle stages—from ancient canopies to the toxic abyss!
             </p>
             <div class="controls-hint">
-                TAP SCREEN / FIRE: Aim &amp; Throw Fireball &bull; JUMP x2: Double / Mid-Air Jump<br>
+                TAP SCREEN: Aim &amp; Throw Fireball &bull; JUMP x2: Double / Mid-Air Jump<br>
                 FLOWERS: +1 HP &bull; LVL 3+: Fiery Force Field Button unlocks!
             </div>
             <div class="menu-btn-row" id="start-btn-row">
@@ -553,9 +544,6 @@
             <div class="action-group">
                 <button class="touch-btn shield-btn hidden" id="btn-shield" type="button" aria-label="Fiery Force Field">
                     <svg viewBox="0 0 16 16"><path d="M8 1C5.8 3.6 3 6.1 3 9.5 3 12.6 5.2 15 8 15s5-2.4 5-5.5C13 6.1 10.2 3.6 8 1zm0 11.8c-1.5 0-2.6-1.1-2.6-2.7 0-1.5 1.3-2.9 2.6-4.4 1.3 1.5 2.6 2.9 2.6 4.4 0 1.6-1.1 2.7-2.6 2.7z"/></svg>
-                </button>
-                <button class="touch-btn fire-btn" id="btn-fire" type="button" aria-label="Cast Fireball">
-                    <svg viewBox="0 0 16 16"><path d="M9.5 1C9.5 3.8 7 5.2 7 7.5c0 .9.6 1.7 1.4 1.9-.2-1.1.5-2.1 1.4-2.7-.2 1.6 1.2 2.4 1.2 4.1 0 2.3-1.8 4.2-4 4.2s-4-1.9-4-4.2C3 7.3 5.8 4.3 9.5 1z"/></svg>
                 </button>
                 <button class="touch-btn jump-btn" id="btn-jump" type="button" aria-label="Jump">
                     <svg viewBox="0 0 16 16"><path d="M8 3l6 7H2l6-7z"/></svg>
@@ -1329,6 +1317,8 @@ const game = {
 const player = {
     x: 32,
     y: 100,
+    spawnX: 32,
+    spawnY: 100,
     w: 15,
     h: 21,
     vx: 0,
@@ -1376,7 +1366,7 @@ function clearInputs() {
     input.jumpJustPressed = false;
     input.shield = false;
     player.shieldActive = false;
-    ['btn-left', 'btn-right', 'btn-jump', 'btn-fire', 'btn-shield'].forEach(id => {
+    ['btn-left', 'btn-right', 'btn-jump', 'btn-shield'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.classList.remove('pressed');
     });
@@ -1625,8 +1615,10 @@ function loadLevel(index, announce = false, isRetry = false) {
                     alive: true
                 });
             } else if (ch === 'P') {
-                player.x = wx + 1;
-                player.y = wy - 5;
+                player.spawnX = wx + 1;
+                player.spawnY = wy - 5;
+                player.x = player.spawnX;
+                player.y = player.spawnY;
                 player.vx = 0;
                 player.vy = 0;
                 player.grounded = false;
@@ -1804,13 +1796,6 @@ function hurtPlayer(sourceX = null, isPitfall = false) {
     if (!isPitfall && player.invulnTimer > 0) return;
     if (game.state !== 'PLAYING') return;
 
-    if (isPitfall) {
-        game.hp = 0;
-        updateHUD();
-        triggerWizardDeath();
-        return;
-    }
-
     game.hp = Math.max(0, game.hp - 1);
     game.shakeTimer = 15;
     player.isHanging = false;
@@ -1824,6 +1809,22 @@ function hurtPlayer(sourceX = null, isPitfall = false) {
 
     sfx.hurt();
     spawnParticles(player.x + player.w / 2, player.y + player.h / 2, ['#ef7d57', '#ff1e7a', '#ffcd75'], 14, 3.4);
+
+    if (isPitfall) {
+        // Respawn wizard back at the start of the current level without resetting gems or progress
+        player.x = player.spawnX;
+        player.y = player.spawnY;
+        player.vx = 0;
+        player.vy = 0;
+        player.grounded = false;
+        player.jumpsRemaining = player.maxJumps;
+        player.doubleJumpSpinTimer = 0;
+        player.facing = 'right';
+        player.invulnTimer = 85;
+        game.cameraX = 0;
+        spawnParticles(player.x + player.w / 2, player.y + player.h / 2, ['#ffcd75', '#a7f070', '#ffffff'], 14, 3.0);
+        return;
+    }
 
     player.invulnTimer = 90;
     const knockDir = (sourceX !== null && player.x + player.w / 2 < sourceX) ? -1 : 1;
@@ -2959,7 +2960,6 @@ function setupControls() {
     const btnLeft = document.getElementById('btn-left');
     const btnRight = document.getElementById('btn-right');
     const btnJump = document.getElementById('btn-jump');
-    const btnFire = document.getElementById('btn-fire');
     const btnShield = document.getElementById('btn-shield');
 
     const unlockAudio = () => sfx.init();
@@ -3050,31 +3050,6 @@ function setupControls() {
     window.addEventListener('touchend', releaseJumpTouch, { passive: true });
     window.addEventListener('touchcancel', releaseJumpTouch, { passive: true });
 
-    let fireTouchId = null;
-    btnFire.addEventListener('touchstart', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        sfx.init();
-        if (fireTouchId === null && e.changedTouches.length > 0) {
-            fireTouchId = e.changedTouches[0].identifier;
-            btnFire.classList.add('pressed');
-            shootFireball(null, null);
-        }
-    }, { passive: false });
-
-    function releaseFireTouch(e) {
-        if (fireTouchId === null) return;
-        for (let i = 0; i < e.changedTouches.length; i++) {
-            if (e.changedTouches[i].identifier === fireTouchId) {
-                fireTouchId = null;
-                btnFire.classList.remove('pressed');
-                break;
-            }
-        }
-    }
-    window.addEventListener('touchend', releaseFireTouch, { passive: true });
-    window.addEventListener('touchcancel', releaseFireTouch, { passive: true });
-
     let shieldTouchId = null;
     btnShield.addEventListener('touchstart', (e) => {
         e.preventDefault();
@@ -3109,7 +3084,6 @@ function setupControls() {
             if (
                 t.identifier === moveTouchId ||
                 t.identifier === jumpTouchId ||
-                t.identifier === fireTouchId ||
                 t.identifier === shieldTouchId
             ) continue;
             shootFireball(t.clientX, t.clientY);
@@ -3128,20 +3102,11 @@ function setupControls() {
             e.preventDefault();
             e.stopPropagation();
             sfx.init();
-            if (key === 'fire') {
-                el.classList.add('pressed');
-                shootFireball(null, null);
-                return;
-            }
             if (key === 'jump' && !input.jump) input.jumpJustPressed = true;
             input[key] = true;
             el.classList.add('pressed');
         });
         window.addEventListener('mouseup', () => {
-            if (key === 'fire') {
-                el.classList.remove('pressed');
-                return;
-            }
             input[key] = false;
             el.classList.remove('pressed');
         });
@@ -3149,7 +3114,6 @@ function setupControls() {
     bindMouseBtn(btnLeft, 'left');
     bindMouseBtn(btnRight, 'right');
     bindMouseBtn(btnJump, 'jump');
-    bindMouseBtn(btnFire, 'fire');
     bindMouseBtn(btnShield, 'shield');
 
     function hideAllOverlays() {
