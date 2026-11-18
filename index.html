@@ -303,6 +303,7 @@
             pointer-events: auto;  
             touch-action: manipulation;  
             cursor: pointer;  
+            background: rgba(10, 22, 16, 0.85);  
         }  
   
         #cutscene-header {  
@@ -909,9 +910,9 @@ class SoundFX {
     }  
   
     blip(who) {  
-        if (who === 'king') this.tone(190 + Math.random() * 22, 175, 0.035, 'triangle', 0.06);  
-        else if (who === 'orion') this.tone(300 + Math.random() * 28, 285, 0.035, 'square', 0.045);  
-        else this.tone(245 + Math.random() * 20, 235, 0.035, 'sine', 0.045);  
+        if (who === 'king') this.playTone(190 + Math.random() * 22, 175, 0.035, 'triangle', 0.06);  
+        else if (who === 'orion') this.playTone(300 + Math.random() * 28, 285, 0.035, 'square', 0.045);  
+        else this.playTone(245 + Math.random() * 20, 235, 0.035, 'sine', 0.045);  
     }  
   
     step(alt = false) {  
@@ -1325,22 +1326,22 @@ const PORTRAITS = {
     king: [  
         ".......KK..KK..KK.......",  
         "......KYYKKYYKKYYK......",  
-        "......KYYYYYYYYYYK......",  
-        "......KYRYYRYYRYYK......",  
-        "......KYYYYYYYYYYK......",  
-        ".....KHHHHHHHHHHHHK.....",  
-        "....KHHFFFFFFFFFFHHK....",  
-        "....KHFFKKFFFFKKFFHK....",  
-        "....KHFFKWFFFFKWFFHK....",  
-        "....KHFFFFFFFFFFFFHK....",  
-        "....KHHFFFFOOFFFFHHK....",  
-        "...KHHHHHFFFFFFHHHHHK...",  
-        "..KHHHHHHHHHHHHHHHHHHK..",  
-        "..KHHHHHHHHHHHHHHHHHHK..",  
-        "...KHHHHHHHHHHHHHHHHK...",  
-        "....KHHHHHHHHHHHHHHK....",  
-        "..KKKEEEEYYYYYYEEEEKKK..",  
-        ".KEEEEEEYYYYYYYYEEEEEK..",  
+        "      KYYYYYYYYYYK......",  
+        "      KYRYYRYYRYYK......",  
+        "      KYYYYYYYYYYK......",  
+        "     KHHHHHHHHHHHHK.....",  
+        "    KHHFFFFFFFFFFHHK....",  
+        "    KHFFKKFFFFKKFFHK....",  
+        "    KHFFKWFFFFKWFFHK....",  
+        "    KHFFFFFFFFFFFFHK....",  
+        "    KHHFFFFOOFFFFHHK....",  
+        "   KHHHHHFFFFFFHHHHHK...",  
+        "  KHHHHHHHHHHHHHHHHHHK..",  
+        "  KHHHHHHHHHHHHHHHHHHK..",  
+        "   KHHHHHHHHHHHHHHHHK...",  
+        "    KHHHHHHHHHHHHHHK....",  
+        "  KKKEEEEYYYYYYEEEEKKK..",  
+        " .KEEEEEEYYYYYYYYEEEEEK..",  
         "KWWWWEEEYYYYYYYYEEEWWWWK",  
         "KWKWKEEEYYYYYYYYEEEKWKWK",  
         "KWWWWEEEEEEEEEEEEEEWWWWK",  
@@ -1350,23 +1351,23 @@ const PORTRAITS = {
     ],  
     orion: [  
         "..........KKKK..........",  
-        ".........KRRRRK.........",  
-        "........KRRRRRRK........",  
-        ".......KRRRRRRRRK.......",  
-        "......KRRRRRRRRRRK......",  
-        ".....KRRRRRRRRRRRRK.....",  
-        "....KRRRRRRRRRRRRRRK....",  
-        "....KRRRKKKKKKKKRRRK....",  
-        "...KRRRKKKKKKKKKKRRRK...",  
-        "...KRRKKKCCKKCCKKKRRK...",  
-        "...KRRKKCCCCCCCCKKRRK...",  
-        "...KRRKKKKKKKKKKKKRRK...",  
-        "....KRRRKKKKKKKKRRRK....",  
-        "....KRRRRRRRRRRRRRRK....",  
-        "...KRRRRRRRRRRRRRRRRK...",  
-        "..KROORRRRRRRRRRRROORK..",  
-        ".KROOORRRRRRRRRRRROOORK.",  
-        ".KRRRRRRRRYYYYRRRRRRRRK.",  
+        "         KRRRRK.........",  
+        "        KRRRRRRK........",  
+        "       KRRRRRRRRK.......",  
+        "      KRRRRRRRRRRK......",  
+        "     KRRRRRRRRRRRRK.....",  
+        "    KRRRRRRRRRRRRRRK....",  
+        "    KRRRKKKKKKKKRRRK....",  
+        "   KRRRKKKKKKKKKKRRRK...",  
+        "   KRRKKKCCKKCCKKKRRK...",  
+        "   KRRKKCCCCCCCCKKRRK...",  
+        "   KRRKKKKKKKKKKKKRRK...",  
+        "    KRRRKKKKKKKKRRRK....",  
+        "    KRRRRRRRRRRRRRRK....",  
+        "   KRRRRRRRRRRRRRRRRK...",  
+        "  KROORRRRRRRRRRRROORK..",  
+        " .KROOORRRRRRRRRRRROOORK.",  
+        " .KRRRRRRRRYYYYRRRRRRRRK.",  
         "KRRRRRRRRYYYYYYRRRRRRRRK",  
         "KRRRRRRRRYYYYRRRRRRRRRK",  
         "KRRRRRRRRRRRRRRRRRRRRRRK",  
@@ -1377,6 +1378,7 @@ const PORTRAITS = {
 };  
   
 const spriteCache = {};  
+const TILE_SIZE = 16;  
   
 function preRenderSprites() {  
     for (const [name, matrix] of Object.entries(SPRITES)) {  
@@ -1535,9 +1537,10 @@ function startOpeningCutscene(onDone) {
   
     document.getElementById('hud').classList.add('hidden');  
     document.getElementById('touch-controls').classList.add('hidden');  
+      
     const csOverlay = document.getElementById('cutscene-overlay');  
-    csOverlay.style.display = 'flex';  
     csOverlay.classList.remove('hidden');  
+    csOverlay.style.display = 'flex';  
   
     paintPortraitCanvases();  
     updateCutsceneUI();  
@@ -1815,7 +1818,7 @@ const LEVELS = [
             '...................................G.G......................................................................',  
             '..................................=====.................................................H..................F',  
             '...............G...............................................E.......................===..............####',  
-            '....P.........===...^^...E.................CCCCCCCC..........#####...........M........................######',  
+            '....P.........===...^^...E........()........CCCCCCCC..........#####...........M........................######',  
             '########..############.#######...............................................#####............M.........######',  
             '########..############.#######..........................................................................######',  
             '########..############.#######..........................................................................######'  
@@ -1837,12 +1840,12 @@ const LEVELS = [
             '...............................................V...............................................==========...............',  
             '..................................A..................................A....................V.............................',  
             '..............................G..G..............................................................................G.......',  
-            '.............................======............................................................................===......',  
-            '.............G..............................................E.........................................E................F',  
-            '....P.......===..^^....E...............CCCCCCCC...........#####........M............CCCCCCCC........#####...........####',  
-            '#######..###########.######................................................................................         ####',  
-            '#######..###########.######.........................................................................................####',  
-            '#######..###########.######.........................................................................................####'  
+            '................             ======................                                                            ===......',  
+            '.............G................                                              E........................E................F',  
+            '....P.......===..^^    E...............CCCCCCCC            #####        M............CCCCCCCC        #####           ####',  
+            '#######..###########.######................                                                                             ####',  
+            '#######..###########.######................                                                                             ####',  
+            '#######..###########.######................                                                                             ####'  
         ]  
     },  
     {  
@@ -3795,7 +3798,8 @@ function setupControls() {
         launchAtLevel(saved.level - 1, false, false);  
     });  
   
-    bindDebouncedBtn(document.getElementById('cutscene-overlay'), () => {  
+    const cutsceneOverlayEl = document.getElementById('cutscene-overlay');  
+    bindDebouncedBtn(cutsceneOverlayEl, () => {  
         advanceCutscene();  
     });  
   
