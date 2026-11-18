@@ -1693,7 +1693,7 @@ const LEVELS = [
             '................................................         =============......................................',  
             '....................................................V..............................................G..G.....',  
             '......................................................................A................           ======....',  
-            '...................................G.G......................................................................',  
+            '...................................G.G................................................................      ',  
             '................                                   =====================.................H..................F',  
             '...............G................                                               E                        ===..............####',  
             '....P         ===...^^...E.................CCCCCCCC          #####           M                        ######',  
@@ -3727,6 +3727,54 @@ function setupControls() {
         if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W' || e.key === ' ') input.jump = false;  
     });  
   
+    // --- ROBUST DIRECT EVENT BINDINGS FOR MENU & CUTSCENE BUTTONS ---  
+    const startBtn = document.getElementById('start-btn');  
+    if (startBtn) {  
+        const handleStartGame = (e) => {  
+            if (e) { e.preventDefault(); e.stopPropagation(); }  
+            startOpeningCutscene(() => launchAtLevel(0, true, false));  
+        };  
+        startBtn.addEventListener('click', handleStartGame);  
+        startBtn.addEventListener('touchend', handleStartGame);  
+    }  
+  
+    const continueBtn = document.getElementById('continue-btn');  
+    if (continueBtn) {  
+        const handleContinueGame = (e) => {  
+            if (e) { e.preventDefault(); e.stopPropagation(); }  
+            const saved = getSavedProgress();  
+            game.gems = saved.gems;  
+            game.flowers = saved.flowers;  
+            game.score = saved.score;  
+            game.levelStartGems = saved.gems;  
+            game.levelStartFlowers = saved.flowers;  
+            game.levelStartScore = saved.score;  
+            launchAtLevel(saved.level - 1, false, false);  
+        };  
+        continueBtn.addEventListener('click', handleContinueGame);  
+        continueBtn.addEventListener('touchend', handleContinueGame);  
+    }  
+  
+    const csOverlay = document.getElementById('cutsceneOverlay');  
+    if (csOverlay) {  
+        const handleCutsceneAdvance = (e) => {  
+            if (e) { e.preventDefault(); e.stopPropagation(); }  
+            advanceCutscene();  
+        };  
+        csOverlay.addEventListener('click', handleCutsceneAdvance);  
+        csOverlay.addEventListener('touchend', handleCutsceneAdvance);  
+    }  
+  
+    const skipCutsceneBtn = document.getElementById('skipCutsceneBtn');  
+    if (skipCutsceneBtn) {  
+        const handleSkip = (e) => {  
+            if (e) { e.preventDefault(); e.stopPropagation(); }  
+            endCutscene();  
+        };  
+        skipCutsceneBtn.addEventListener('click', handleSkip);  
+        skipCutsceneBtn.addEventListener('touchend', handleSkip);  
+    }  
+  
     function bindDebouncedBtn(el, handler) {  
         if (!el) return;  
         let lastTap = 0;  
@@ -3744,29 +3792,6 @@ function setupControls() {
         el.addEventListener('pointerdown', wrapped);  
         el.addEventListener('click', wrapped);  
     }  
-  
-    bindDebouncedBtn(document.getElementById('start-btn'), () => {  
-        startOpeningCutscene(() => launchAtLevel(0, true, false));  
-    });  
-  
-    bindDebouncedBtn(document.getElementById('continue-btn'), () => {  
-        const saved = getSavedProgress();  
-        game.gems = saved.gems;  
-        game.flowers = saved.flowers;  
-        game.score = saved.score;  
-        game.levelStartGems = saved.gems;  
-        game.levelStartFlowers = saved.flowers;  
-        game.levelStartScore = saved.score;  
-        launchAtLevel(saved.level - 1, false, false);  
-    });  
-  
-    bindDebouncedBtn(document.getElementById('cutsceneOverlay'), () => {  
-        advanceCutscene();  
-    });  
-  
-    bindDebouncedBtn(document.getElementById('skipCutsceneBtn'), () => {  
-        endCutscene();  
-    });  
   
     bindDebouncedBtn(document.getElementById('pause-btn'), () => {  
         if (game.state === 'PLAYING') {  
