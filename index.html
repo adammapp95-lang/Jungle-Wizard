@@ -91,6 +91,24 @@
             border: 2px solid #3c7a52;
         }
 
+        /* Interactive Flower Counter for On-Demand Healing */
+        #hud-flowers {
+            pointer-events: auto;
+            touch-action: manipulation;
+            transition: transform 0.08s, border-color 0.18s, box-shadow 0.18s, background 0.18s;
+        }
+
+        #hud-flowers.can-heal {
+            cursor: pointer;
+            border-color: #ff85b3;
+            background: rgba(54, 20, 42, 0.92);
+            box-shadow: 0 0 8px rgba(255, 133, 179, 0.55);
+        }
+
+        #hud-flowers.can-heal:active {
+            transform: translateY(2px) scale(0.96);
+        }
+
         /* Ornate Fantasy 5-Segment Health Bar */
         .fantasy-hp-frame {
             display: flex;
@@ -2777,8 +2795,34 @@ function loadLevel(index, announce = false, isRetry = false) {
     }
 }
 
+function getEffectiveMaxHp() {
+    return game.levelIndex === 3 ? 1 : game.maxHp;
+}
+
+function useStoredFlowerHeal() {
+    if (game.state !== 'PLAYING' || isPortrait()) return false;
+    const effectiveMaxHp = getEffectiveMaxHp();
+    if (game.flowers <= 0 || game.hp >= effectiveMaxHp) {
+        return false;
+    }
+
+    game.flowers = Math.max(0, game.flowers - 1);
+    game.hp = Math.min(effectiveMaxHp, game.hp + 1);
+    sfx.flower();
+    spawnParticles(
+        player.x + player.w / 2,
+        player.y + player.h / 2,
+        ['#ff85b3', '#ffcd75', '#a7f070', '#ffffff'],
+        16,
+        3.2
+    );
+    updateHUD();
+    return true;
+}
+
 function updateHUD() {
     const isToxicLevel = game.levelIndex === 3;
+    const effectiveMaxHp = getEffectiveMaxHp();
     const hpFrame = document.getElementById('hp-frame');
     if (hpFrame) {
         hpFrame.classList.toggle('toxic-danger', isToxicLevel);
@@ -2796,7 +2840,12 @@ function updateHUD() {
     const pauseBtn = document.getElementById('pause-btn');
 
     if (gemsEl) gemsEl.innerHTML = `&#128142; ${game.gems}`;
-    if (flowersEl) flowersEl.innerHTML = `&#127802; ${game.flowers}`;
+    if (flowersEl) {
+        flowersEl.innerHTML = `&#127802; ${game.flowers}`;
+        const canHealNow = game.state === 'PLAYING' && game.flowers > 0 && game.hp < effectiveMaxHp;
+        flowersEl.classList.toggle('can-heal', canHealNow);
+        flowersEl.title = canHealNow ? 'Tap to use 1 flower (+1 HP)' : 'Stored flowers (auto-heals below full HP)';
+    }
     if (levelEl) levelEl.textContent = `LVL ${game.levelIndex + 1}/${LEVELS.length}`;
     if (pauseBtn) {
         const showPause = (game.state === 'PLAYING' || game.state === 'PAUSED');
@@ -3420,11 +3469,19 @@ function update() {
                 sfx.gem();
                 spawnParticles(item.x + 7, item.y + 6, ['#73eff7', '#ffcd75', '#a7f070'], 10, 2.6);
             } else if (item.kind === 'flower') {
-                game.flowers++;
+                const effectiveMaxHp = getEffectiveMaxHp();
                 game.score += 200;
-                game.hp = Math.min(game.maxHp, game.hp + 1);
-                sfx.flower();
-                spawnParticles(item.x + 7, item.y + 6, ['#ff85b3', '#ffcd75', '#a7f070'], 14, 3.0);
+                if (game.hp < effectiveMaxHp) {
+                    // Automatically use the flower to heal 1 HP when injured
+                    game.hp = Math.min(effectiveMaxHp, game.hp + 1);
+                    sfx.flower();
+                    spawnParticles(item.x + 7, item.y + 6, ['#ff85b3', '#ffcd75', '#a7f070'], 14, 3.0);
+                } else {
+                    // Bank the flower in inventory when already at full health
+                    game.flowers++;
+                    sfx.flower();
+                    spawnParticles(item.x + 7, item.y + 6, ['#ff85b3', '#ffcd75', '#a7f070'], 14, 3.0);
+                }
             }
             updateHUD();
         }
@@ -4573,6 +4630,11 @@ function setupControls() {
         muteBtn.textContent = isMuted ? 'SFX:OFF' : 'SFX:ON';
         muteBtn.style.borderColor = isMuted ? '#b13e53' : '#d49b35';
         muteBtn.style.color = isMuted ? '#b13e53' : '#ffcd75';
+    });
+
+    // Tapping/Clicking the HUD Flower Counter spends 1 stored flower for +1 HP
+    bindDebouncedBtn(document.getElementById('hud-flowers'), () => {
+        useStoredFlowerHeal();
     });
 }
 
