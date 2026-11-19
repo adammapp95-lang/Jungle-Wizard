@@ -932,8 +932,8 @@
  * JUNGLE WIZARD - Complete Mobile Pixel Art Platformer
  * - Character selection screen before opening cutscene (Orion: Fire / Aurora: Ice)
  * - Dynamic cutscene dialogue, speaker tags & portraits for Orion or Aurora
- * - Persistent localStorage level, score & character selection
- * - Current-level respawn on death & Pause menu ('II')
+ * - Persistent localStorage level, score, gems, flowers, HP & character selection
+ * - Current-level respawn on death & Pause menu ('II') preserving level-start HP
  * - 4 Progressive Jungle Stages with grounded crystal spikes & green ptero venom
  * ============================================================================
  */
@@ -944,6 +944,7 @@ const STORAGE_KEYS = {
     SCORE: 'jungle_wizard_saved_score',
     GEMS: 'jungle_wizard_saved_gems',
     FLOWERS: 'jungle_wizard_saved_flowers',
+    HP: 'jungle_wizard_saved_hp',
     CHARACTER: 'jungle_wizard_selected_character'
 };
 
@@ -969,25 +970,30 @@ function getSavedProgress() {
         const rawScore = parseInt(localStorage.getItem(STORAGE_KEYS.SCORE), 10);
         const rawGems = parseInt(localStorage.getItem(STORAGE_KEYS.GEMS), 10);
         const rawFlowers = parseInt(localStorage.getItem(STORAGE_KEYS.FLOWERS), 10);
+        const rawHp = parseInt(localStorage.getItem(STORAGE_KEYS.HP), 10);
         const level = Number.isFinite(rawLvl) ? Math.max(1, Math.min(4, rawLvl)) : 1;
+        const hp = Number.isFinite(rawHp) ? Math.max(1, Math.min(5, rawHp)) : 5;
         return {
             level,
             score: Number.isFinite(rawScore) ? Math.max(0, rawScore) : 0,
             gems: Number.isFinite(rawGems) ? Math.max(0, rawGems) : 0,
-            flowers: Number.isFinite(rawFlowers) ? Math.max(0, rawFlowers) : 0
+            flowers: Number.isFinite(rawFlowers) ? Math.max(0, rawFlowers) : 0,
+            hp
         };
     } catch (e) {
-        return { level: 1, score: 0, gems: 0, flowers: 0 };
+        return { level: 1, score: 0, gems: 0, flowers: 0, hp: 5 };
     }
 }
 
-function saveProgress(levelNum, score, gems, flowers) {
+function saveProgress(levelNum, score, gems, flowers, hp = 5) {
     try {
         const clampedLvl = Math.max(1, Math.min(4, levelNum));
+        const clampedHp = Math.max(1, Math.min(5, Number.isFinite(hp) ? hp : 5));
         localStorage.setItem(STORAGE_KEYS.LEVEL, String(clampedLvl));
         localStorage.setItem(STORAGE_KEYS.SCORE, String(Math.max(0, score)));
         localStorage.setItem(STORAGE_KEYS.GEMS, String(Math.max(0, gems)));
         localStorage.setItem(STORAGE_KEYS.FLOWERS, String(Math.max(0, flowers)));
+        localStorage.setItem(STORAGE_KEYS.HP, String(clampedHp));
     } catch (e) {
         // Silently ignore storage restrictions in private browsing / WebViews
     }
@@ -999,7 +1005,9 @@ function refreshStartScreenButtons() {
     const startBtn = document.getElementById('start-btn');
     if (!continueBtn || !startBtn) return;
 
-    if (saved.level > 1) {
+    const hasSavedMidLevelProgress = saved.score > 0 || saved.gems > 0 || saved.flowers > 0 || saved.hp < 5;
+
+    if (saved.level > 1 || hasSavedMidLevelProgress) {
         continueBtn.textContent = `CONTINUE LEVEL ${saved.level}`;
         continueBtn.classList.remove('hidden');
         startBtn.textContent = 'NEW GAME';
@@ -2405,6 +2413,7 @@ const game = {
     levelStartScore: 0,
     levelStartGems: 0,
     levelStartFlowers: 0,
+    levelStartHp: 5,
     hp: 5,
     maxHp: 5,
     frameCount: 0,
@@ -2541,17 +2550,24 @@ function loadLevel(index, announce = false, isRetry = false) {
     const clampedIndex = Math.max(0, Math.min(LEVELS.length - 1, index));
     game.levelIndex = clampedIndex;
 
+    const hasHardCombat = clampedIndex >= 2;
+    const isToxicLevel = clampedIndex === 3;
+
     if (isRetry) {
         game.score = game.levelStartScore;
         game.gems = game.levelStartGems;
         game.flowers = game.levelStartFlowers;
+        game.hp = isToxicLevel ? 1 : Math.max(1, Math.min(game.maxHp, game.levelStartHp));
     } else {
+        const effectiveEntryHp = isToxicLevel ? 1 : Math.max(1, Math.min(game.maxHp, game.hp));
+        game.hp = effectiveEntryHp;
         game.levelStartScore = game.score;
         game.levelStartGems = game.gems;
         game.levelStartFlowers = game.flowers;
+        game.levelStartHp = effectiveEntryHp;
+        saveProgress(clampedIndex + 1, game.levelStartScore, game.levelStartGems, game.levelStartFlowers, game.levelStartHp);
     }
 
-    saveProgress(clampedIndex + 1, game.levelStartScore, game.levelStartGems, game.levelStartFlowers);
     saveCharacterSelection(game.character);
     syncShieldButtonAppearance();
 
@@ -2570,14 +2586,8 @@ function loadLevel(index, announce = false, isRetry = false) {
     game.cameraX = 0;
     game.wizardPortalAlpha = 1;
 
-    const hasHardCombat = clampedIndex >= 2;
-    const isToxicLevel = clampedIndex === 3;
-
-    if (isToxicLevel) {
-        game.hp = 1;
-        if (announce) sfx.toxicHiss();
-    } else if (isRetry) {
-        game.hp = game.maxHp;
+    if (isToxicLevel && announce) {
+        sfx.toxicHiss();
     }
 
     const rows = lvl.map.length;
@@ -3115,7 +3125,7 @@ function update() {
             if (game.levelIndex >= LEVELS.length) {
                 game.state = 'VICTORY';
                 updateHUD();
-                saveProgress(4, game.score, game.gems, game.flowers);
+                saveProgress(4, game.score, game.gems, game.flowers, Math.max(1, game.hp));
                 document.getElementById('victory-stats').innerHTML =
                     `GEMS: ${game.gems} &bull; FLOWERS: ${game.flowers}<br>FINAL SCORE: ${game.score}`;
                 document.getElementById('victory-screen').classList.remove('hidden');
@@ -4481,8 +4491,13 @@ function setupControls() {
 
     function quitToTitle(saveCurrentStage = true) {
         clearInputs();
-        if (saveCurrentStage) {
-            saveProgress(game.levelIndex + 1, game.levelStartScore, game.levelStartGems, game.levelStartFlowers);
+        if (saveCurrentStage && game.hp > 0) {
+            const hpToSave = game.levelIndex === 3 ? 1 : Math.max(1, Math.min(game.maxHp, game.hp));
+            game.levelStartScore = game.score;
+            game.levelStartGems = game.gems;
+            game.levelStartFlowers = game.flowers;
+            game.levelStartHp = hpToSave;
+            saveProgress(game.levelIndex + 1, game.score, game.gems, game.flowers, hpToSave);
         }
         saveCharacterSelection(game.character);
         game.state = 'START';
@@ -4505,13 +4520,14 @@ function setupControls() {
             game.gems = 0;
             game.flowers = 0;
             game.score = 0;
+            game.hp = game.maxHp;
             game.levelStartScore = 0;
             game.levelStartGems = 0;
             game.levelStartFlowers = 0;
-            saveProgress(1, 0, 0, 0);
+            game.levelStartHp = game.maxHp;
+            saveProgress(1, 0, 0, 0, game.maxHp);
         }
 
-        game.hp = game.maxHp;
         game.state = 'PLAYING';
         hideAllOverlays();
         document.getElementById('hud').classList.remove('hidden');
@@ -4623,14 +4639,18 @@ function setupControls() {
 
     bindDebouncedBtn(document.getElementById('continue-btn'), () => {
         const saved = getSavedProgress();
+        const targetIdx = saved.level - 1;
+        const restoredHp = targetIdx === 3 ? 1 : Math.max(1, Math.min(game.maxHp, saved.hp));
         game.character = getSavedCharacter();
         game.gems = saved.gems;
         game.flowers = saved.flowers;
         game.score = saved.score;
+        game.hp = restoredHp;
         game.levelStartGems = saved.gems;
         game.levelStartFlowers = saved.flowers;
         game.levelStartScore = saved.score;
-        launchAtLevel(saved.level - 1, false, false);
+        game.levelStartHp = restoredHp;
+        launchAtLevel(targetIdx, false, false);
     });
 
     // Character Selection Controls
@@ -4692,7 +4712,7 @@ function setupControls() {
     });
 
     bindDebouncedBtn(document.getElementById('gameover-quit-btn'), () => {
-        quitToTitle(true);
+        quitToTitle(false);
     });
 
     // Victory Play Again Button
@@ -4727,6 +4747,14 @@ function initGame() {
     setupControls();
     refreshStartScreenButtons();
     const saved = getSavedProgress();
+    game.gems = saved.gems;
+    game.flowers = saved.flowers;
+    game.score = saved.score;
+    game.hp = saved.level === 4 ? 1 : saved.hp;
+    game.levelStartGems = saved.gems;
+    game.levelStartFlowers = saved.flowers;
+    game.levelStartScore = saved.score;
+    game.levelStartHp = game.hp;
     loadLevel(saved.level - 1, false, false);
     render();
     requestAnimationFrame(gameLoop);
