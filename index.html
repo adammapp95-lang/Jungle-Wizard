@@ -916,7 +916,8 @@
             </div>
             <div class="action-group">
                 <button class="touch-btn shield-btn hidden" id="btn-shield" type="button" aria-label="Force Field">
-                    <svg viewBox="0 0 16 16"><path d="M8 1C5.8 3.6 3 6.1 3 9.5 3 12.6 5.2 15 8 15s5-2.4 5-5.5C13 6.1 10.2 3.6 8 1zm0 11.8c-1.5 0-2.6-1.1-2.6-2.7 0-1.5 1.3-2.9 2.6-4.4 1.3 1.5 2.6 2.9 2.6 4.4 0 1.6-1.1 2.7-2.6 2.7z"/></svg>
+                    <svg id="shield-icon-fire" viewBox="0 0 16 16"><path d="M8 1C5.8 3.6 3 6.1 3 9.5 3 12.6 5.2 15 8 15s5-2.4 5-5.5C13 6.1 10.2 3.6 8 1zm0 11.8c-1.5 0-2.6-1.1-2.6-2.7 0-1.5 1.3-2.9 2.6-4.4 1.3 1.5 2.6 2.9 2.6 4.4 0 1.6-1.1 2.7-2.6 2.7z"/></svg>
+                    <svg id="shield-icon-ice" class="hidden" viewBox="0 0 16 16"><path d="M7 1h2v3l1.7-1.7 1.4 1.4L9 6.8V7h.2l3.1-3.1 1.4 1.4L12 7h3v2h-3l1.7 1.7-1.4 1.4L9.2 9H9v.2l3.1 3.1-1.4 1.4L9 12v3H7v-3l-1.7 1.7-1.4-1.4L7 9.2V9h-.2l-3.1 3.1-1.4-1.4L4 9H1V7h3L2.3 5.3l1.4-1.4L6.8 7H7v-.2L3.9 3.7l1.4-1.4L7 4V1z"/></svg>
                 </button>
                 <button class="touch-btn jump-btn" id="btn-jump" type="button" aria-label="Jump">
                     <svg viewBox="0 0 16 16"><path d="M8 3l6 7H2l6-7z"/></svg>
@@ -1924,7 +1925,13 @@ function getHeroSpriteName(baseAction) {
 function syncShieldButtonAppearance() {
     const shieldBtn = document.getElementById('btn-shield');
     if (!shieldBtn) return;
-    shieldBtn.classList.toggle('ice-mode', game.character === 'aurora');
+    const isAurora = game.character === 'aurora';
+    shieldBtn.classList.toggle('ice-mode', isAurora);
+
+    const fireIcon = document.getElementById('shield-icon-fire');
+    const iceIcon = document.getElementById('shield-icon-ice');
+    if (fireIcon) fireIcon.classList.toggle('hidden', isAurora);
+    if (iceIcon) iceIcon.classList.toggle('hidden', !isAurora);
 }
 
 // --- 2B. TWO-STAGE OPENING CUTSCENE WITH DYNAMIC CHARACTER DIALOGUE ---
