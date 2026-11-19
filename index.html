@@ -1302,6 +1302,7 @@ const PALETTE = {
     'B': '#7a444a',   // Wooden Staff Bark
     'G': '#38b764',   // Goblin / Jungle Green
     'L': '#a7f070',   // Lime Highlight
+    'F': '#00e676',   // Corrupted Toxic Venom Vein Green
     'T': '#257179',   // Deep Jungle Teal
     'P': '#5d275d',   // Pterodactyl Plum
     'M': '#8b4166',   // Pterodactyl Wing Mauve
@@ -1780,6 +1781,30 @@ const SPRITES = {
         '..MMMMMMMPPPPPP.',
         '...MMMMMM.PPPP..',
         '....MMMM........',
+        '.....MM.........',
+        '................'
+    ],
+    pteroToxic1: [
+        '.....MM.........',
+        '....MLMM........',
+        '...MMLMMM...PP..',
+        '..MMFLLMMM.PFPP.',
+        '.MMFMMFLMMPPPFPO',
+        'MMFMMMMFLPPFPPP.',
+        '.MMMMMM...PFPP..',
+        '..MMMM..........',
+        '...MM...........',
+        '................'
+    ],
+    pteroToxic2: [
+        '................',
+        '................',
+        '............PP..',
+        '...........PFPP.',
+        '.MMFMMFLMMPPPFPO',
+        '..MMFLLMPPPFPPP.',
+        '...MMLMMM.PFPP..',
+        '....MLMM........',
         '.....MM.........',
         '................'
     ],
@@ -3643,6 +3668,16 @@ function update() {
             } else if (game.levelIndex >= 2) {
                 enemy.shootTimer = Math.min(enemy.shootTimer, 14);
             }
+
+            if (game.levelIndex >= 2 && game.frameCount % 16 === 0) {
+                spawnParticles(
+                    enemy.x + 6 + Math.random() * 10,
+                    enemy.y + 5 + Math.random() * 6,
+                    ['#00e676', '#a7f070'],
+                    1,
+                    0.75
+                );
+            }
         }
 
         const activeShieldBox = {
@@ -4076,7 +4111,11 @@ function render() {
                 ctx.drawImage(spriteCache[anim][dir], Math.round(enemy.x - 1), Math.round(enemy.y - 1), 20, 18);
             }
         } else if (enemy.kind === 'pterodactyl') {
-            const anim = Math.floor(game.frameCount / 8) % 2 === 0 ? 'ptero1' : 'ptero2';
+            const isCorrupted = game.levelIndex >= 2;
+            const wingDown = Math.floor(game.frameCount / 8) % 2 === 0;
+            const anim = isCorrupted
+                ? (wingDown ? 'pteroToxic1' : 'pteroToxic2')
+                : (wingDown ? 'ptero1' : 'ptero2');
             if (spriteCache[anim]) {
                 ctx.drawImage(spriteCache[anim][dir], Math.round(enemy.x - 1), Math.round(enemy.y - 1), 24, 15);
             }
