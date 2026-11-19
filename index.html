@@ -2727,13 +2727,14 @@ function loadLevel(index, announce = false, isRetry = false) {
                     patrolRange: 76,
                     flyPhase: c * 0.5,
                     prevFlapDown: false,
+                    bounceTimer: 0,
                     chirpTimer: 50 + (c * 23) % 80,
                     shootTimer: 16 + (c * 11) % 20,
                     alive: true
                 });
             } else if (ch === 'P') {
-                player.spawnX = wx + 1;
-                player.spawnY = wy - 5;
+                player.spawnX = wx;
+                player.spawnY = wy - 6;
                 player.x = player.spawnX;
                 player.y = player.spawnY;
                 player.vx = 0;
@@ -2742,19 +2743,14 @@ function loadLevel(index, announce = false, isRetry = false) {
                 player.jumpsRemaining = player.maxJumps;
                 player.doubleJumpSpinTimer = 0;
                 player.isHanging = false;
+                player.invulnTimer = 0;
+                player.facing = 'right';
                 player.shieldActive = false;
                 player.shieldEnergy = player.maxShieldEnergy;
                 player.shieldOverheated = false;
-                player.facing = 'right';
-                player.invulnTimer = 0;
-                player.castTimer = 0;
             } else if (ch === 'F') {
-                game.portal = {
-                    x: wx - 6,
-                    y: wy - 20,
-                    w: 26,
-                    h: 36
-                };
+                game.portal.x = wx - 5;
+                game.portal.y = wy - 20;
             }
         }
     }
@@ -3496,27 +3492,42 @@ function update() {
         );
 
         if (enemy.kind === 'goblin') {
-            enemy.x += enemy.vx;
-
-            let hitWall = false;
-            for (const tile of game.tiles) {
-                if (tile.type !== 'spike' && !tile.oneWay && checkAABB(enemy, tile)) {
-                    hitWall = true;
-                    break;
+            if (enemy.bounceTimer > 0) {
+                enemy.bounceTimer--;
+                enemy.x += enemy.vx;
+                for (const tile of game.tiles) {
+                    if (tile.type !== 'spike' && !tile.oneWay && checkAABB(enemy, tile)) {
+                        if (enemy.vx > 0) enemy.x = tile.x - enemy.w;
+                        else if (enemy.vx < 0) enemy.x = tile.x + tile.w;
+                        enemy.vx = -enemy.vx * 0.65;
+                    }
                 }
-            }
+                if (enemy.bounceTimer === 0) {
+                    enemy.vx = (enemy.vx >= 0 ? 1 : -1) * 0.72;
+                }
+            } else {
+                enemy.x += enemy.vx;
 
-            const lookAheadX = enemy.vx > 0 ? enemy.x + enemy.w + 2 : enemy.x - 2;
-            const footY = enemy.y + enemy.h + 3;
-            const hasGroundAhead = game.tiles.some(t =>
-                t.type !== 'spike' &&
-                lookAheadX >= t.x && lookAheadX <= t.x + t.w &&
-                footY >= t.y && footY <= t.y + t.h
-            );
+                let hitWall = false;
+                for (const tile of game.tiles) {
+                    if (tile.type !== 'spike' && !tile.oneWay && checkAABB(enemy, tile)) {
+                        hitWall = true;
+                        break;
+                    }
+                }
 
-            if (hitWall || !hasGroundAhead || enemy.x <= 0) {
-                enemy.vx *= -1;
-                enemy.x += enemy.vx * 2;
+                const lookAheadX = enemy.vx > 0 ? enemy.x + enemy.w + 2 : enemy.x - 2;
+                const footY = enemy.y + enemy.h + 3;
+                const hasGroundAhead = game.tiles.some(t =>
+                    t.type !== 'spike' &&
+                    lookAheadX >= t.x && lookAheadX <= t.x + t.w &&
+                    footY >= t.y && footY <= t.y + t.h
+                );
+
+                if (hitWall || !hasGroundAhead || enemy.x <= 0) {
+                    enemy.vx *= -1;
+                    enemy.x += enemy.vx * 2;
+                }
             }
 
             if (distToPlayer < 130) {
@@ -3527,9 +3538,54 @@ function update() {
                 }
             }
         } else if (enemy.kind === 'pterodactyl') {
-            enemy.x += enemy.vx;
-            enemy.flyPhase += 0.075;
-            enemy.y = enemy.baseY + Math.sin(enemy.flyPhase) * 11;
+            if (enemy.bounceTimer > 0) {
+                enemy.bounceTimer--;
+                enemy.x += enemy.vx;
+                enemy.y += enemy.vy || 0;
+                enemy.flyPhase += 0.14;
+                const minX = Math.max(4, enemy.startX - enemy.patrolRange);
+                const maxX = Math.min(game.levelWidth - 4 - enemy.w, enemy.startX + enemy.patrolRange);
+                if (enemy.x < minX) {
+                    enemy.x = minX;
+                    enemy.vx = Math.abs(enemy.vx || 1.12);
+                } else if (enemy.x > maxX) {
+                    enemy.x = maxX;
+                    enemy.vx = -Math.abs(enemy.vx || 1.12);
+                }
+                if (enemy.bounceTimer === 0) {
+                    enemy.vx = (enemy.vx >= 0 ? 1 : -1) * 1.12;
+                    enemy.vy = 0;
+                }
+            } else {
+                const speed = Math.abs(enemy.vx) || 1.12;
+                const dir = enemy.vx >= 0 ? 1 : -1;
+                enemy.vx = dir * speed;
+                enemy.x += enemy.vx;
+                enemy.flyPhase += 0.075;
+                enemy.y = enemy.baseY + Math.sin(enemy.flyPhase) * 11;
+
+                let hitWall = false;
+                for (const tile of game.tiles) {
+                    if (tile.type !== 'spike' && !tile.oneWay && checkAABB(enemy, tile)) {
+                        hitWall = true;
+                        break;
+                    }
+                }
+
+                const minPatrolX = Math.max(4, enemy.startX - enemy.patrolRange);
+                const maxPatrolX = Math.min(game.levelWidth - 4 - enemy.w, enemy.startX + enemy.patrolRange);
+
+                if (enemy.x <= minPatrolX) {
+                    enemy.x = minPatrolX;
+                    enemy.vx = speed;
+                } else if (enemy.x >= maxPatrolX) {
+                    enemy.x = maxPatrolX;
+                    enemy.vx = -speed;
+                } else if (hitWall) {
+                    enemy.vx = -dir * speed;
+                    enemy.x += enemy.vx * 2;
+                }
+            }
 
             const flapDown = Math.floor(game.frameCount / 8) % 2 === 1;
             if (flapDown && !enemy.prevFlapDown && distToPlayer < 165) {
@@ -3540,7 +3596,7 @@ function update() {
             const pteroCenterX = enemy.x + enemy.w / 2;
             const playerCenterX = player.x + player.w / 2;
             const horizDist = Math.abs(playerCenterX - pteroCenterX);
-            const isFacingWizard = (enemy.vx > 0 && playerCenterX > pteroCenterX) ||
+            const isFacingWizard = (enemy.vx >= 0 && playerCenterX >= pteroCenterX) ||
                                    (enemy.vx < 0 && playerCenterX < pteroCenterX);
 
             if (distToPlayer < 175) {
@@ -3551,11 +3607,11 @@ function update() {
                 }
             }
 
-            if (game.levelIndex >= 2 && horizDist < 225 && distToPlayer < 245 && isFacingWizard) {
+            if (game.levelIndex >= 2 && (enemy.bounceTimer || 0) <= 0 && horizDist < 240 && distToPlayer < 260 && isFacingWizard) {
                 enemy.shootTimer--;
                 if (enemy.shootTimer <= 0) {
-                    enemy.shootTimer = game.levelIndex === 3 ? 60 : 75;
-                    const ox = pteroCenterX + (enemy.vx > 0 ? 8 : -8);
+                    enemy.shootTimer = game.levelIndex === 3 ? 58 : 72;
+                    const ox = pteroCenterX + (enemy.vx >= 0 ? 8 : -8);
                     const oy = enemy.y + enemy.h * 0.72;
                     const tx = playerCenterX;
                     const ty = player.y + player.h / 2;
@@ -3575,37 +3631,58 @@ function update() {
                     spawnParticles(ox, oy, ['#76ff03', '#00e676', '#a7f070'], 7, 2.2);
                 }
             } else if (game.levelIndex >= 2) {
-                enemy.shootTimer = Math.min(enemy.shootTimer, 16);
-            }
-
-            let hitWall = false;
-            for (const tile of game.tiles) {
-                if (tile.type !== 'spike' && !tile.oneWay && checkAABB(enemy, tile)) {
-                    hitWall = true;
-                    break;
-                }
-            }
-
-            if (hitWall || Math.abs(enemy.x - enemy.startX) > enemy.patrolRange || enemy.x <= 4) {
-                enemy.vx *= -1;
-                enemy.x += enemy.vx * 2;
+                enemy.shootTimer = Math.min(enemy.shootTimer, 14);
             }
         }
 
-        if (checkAABB(player, enemy)) {
-            const isStomping = !player.isHanging && player.vy > 0 && (player.y + player.h - player.vy) <= enemy.y + enemy.h * 0.72;
-            if (isStomping) {
-                enemy.alive = false;
-                player.vy = -4.0;
-                player.jumpsRemaining = Math.max(1, player.jumpsRemaining);
-                game.score += 250;
-                sfx.stomp();
-                spawnParticles(enemy.x + enemy.w / 2, enemy.y + enemy.h / 2, ['#a7f070', '#ffcd75'], 14, 3.4);
-                updateHUD();
-            } else {
-                hurtPlayer(enemy.x + enemy.w / 2, false);
-                return;
+        const activeShieldBox = {
+            x: player.x - 6,
+            y: player.y - 5,
+            w: player.w + 12,
+            h: player.h + 10
+        };
+
+        const isStomping = !player.isHanging && player.vy > 0 && (player.y + player.h - player.vy) <= enemy.y + enemy.h * 0.72;
+
+        if (isStomping && checkAABB(player, enemy)) {
+            enemy.alive = false;
+            player.vy = -4.0;
+            player.jumpsRemaining = Math.max(1, player.jumpsRemaining);
+            game.score += 250;
+            sfx.stomp();
+            spawnParticles(enemy.x + enemy.w / 2, enemy.y + enemy.h / 2, ['#a7f070', '#ffcd75'], 14, 3.4);
+            updateHUD();
+        } else if (player.shieldActive && checkAABB(enemy, activeShieldBox)) {
+            const pushDir = (enemy.x + enemy.w / 2) >= (player.x + player.w / 2) ? 1 : -1;
+            enemy.vx = pushDir * (enemy.kind === 'pterodactyl' ? 2.6 : 2.2);
+            if (enemy.kind === 'pterodactyl') {
+                enemy.vy = -1.1;
             }
+            enemy.x += pushDir * 5;
+            enemy.bounceTimer = 18;
+            player.shieldEnergy = Math.max(0, player.shieldEnergy - 14);
+            if (player.shieldEnergy <= 0) {
+                player.shieldActive = false;
+                player.shieldOverheated = true;
+            }
+            sfx.fireShieldVaporize(isIce);
+            spawnParticles(
+                enemy.x + enemy.w / 2,
+                enemy.y + enemy.h / 2,
+                isIce ? ['#f4f4f4', '#73eff7', '#41a6f6'] : ['#ffcd75', '#ef7d57', '#b13e53'],
+                12,
+                3.2
+            );
+        } else if (checkAABB(player, enemy)) {
+            const pushDir = (enemy.x + enemy.w / 2) >= (player.x + player.w / 2) ? 1 : -1;
+            enemy.vx = pushDir * (enemy.kind === 'pterodactyl' ? 2.3 : 1.9);
+            if (enemy.kind === 'pterodactyl') {
+                enemy.vy = -0.9;
+            }
+            enemy.x += pushDir * 4;
+            enemy.bounceTimer = 16;
+            hurtPlayer(enemy.x + enemy.w / 2, false);
+            return;
         }
     }
 
