@@ -195,6 +195,121 @@
             100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
         }
 
+        /* ================= CHARACTER SELECTION SCREEN ================= */
+        #char-select-screen {
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 50% 35%, #163325 0%, #09150f 90%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 10px 16px;
+            z-index: 30;
+            gap: clamp(8px, 1.8vh, 14px);
+            pointer-events: auto;
+        }
+
+        .char-select-title {
+            font-size: clamp(14px, 3.2vw, 22px);
+            color: #ffcd75;
+            text-shadow: 3px 3px 0 #14151f;
+        }
+
+        .char-cards-row {
+            display: flex;
+            flex-direction: row;
+            align-items: stretch;
+            justify-content: center;
+            gap: clamp(10px, 2.5vw, 22px);
+            width: 100%;
+            max-width: 680px;
+        }
+
+        .char-card {
+            flex: 1;
+            min-width: 0;
+            background: rgba(16, 36, 26, 0.92);
+            border: 3px solid #3c7a52;
+            border-radius: 10px;
+            padding: clamp(8px, 1.6vh, 14px) clamp(10px, 2vw, 16px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            transition: transform 0.12s, border-color 0.12s, box-shadow 0.12s, background 0.12s;
+            box-shadow: 0 4px 0 #07110c;
+            touch-action: manipulation;
+        }
+
+        .char-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .char-card.selected.orion-card {
+            border-color: #ef7d57;
+            background: rgba(58, 22, 28, 0.94);
+            box-shadow: 0 0 0 2px #ffcd75, 0 5px 16px rgba(239, 125, 87, 0.35);
+        }
+
+        .char-card.selected.aurora-card {
+            border-color: #73eff7;
+            background: rgba(18, 42, 62, 0.94);
+            box-shadow: 0 0 0 2px #f4f4f4, 0 5px 16px rgba(115, 239, 247, 0.35);
+        }
+
+        .char-preview-box {
+            width: clamp(54px, 10vw, 72px);
+            height: clamp(54px, 10vw, 72px);
+            background: rgba(10, 18, 24, 0.85);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .char-preview-box canvas {
+            width: 82%;
+            height: 82%;
+            image-rendering: pixelated;
+        }
+
+        .char-name {
+            font-size: clamp(10px, 2vw, 13px);
+            color: #f4f4f4;
+        }
+
+        .char-card.orion-card .char-name {
+            color: #ffcd75;
+        }
+
+        .char-card.aurora-card .char-name {
+            color: #73eff7;
+        }
+
+        .char-role {
+            font-size: clamp(7px, 1.3vw, 9px);
+            color: #a7f070;
+        }
+
+        .char-desc {
+            font-size: clamp(6px, 1.15vw, 8px);
+            color: #cbd6e2;
+            line-height: 1.5;
+            max-width: 260px;
+        }
+
+        .char-select-actions {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+
         /* ================= TWO-STAGE OPENING CUTSCENE ================= */
         #cutsceneOverlay {
             position: absolute;
@@ -269,10 +384,16 @@
             animation: popPortrait 0.22s ease-out;
         }
 
-        .portrait-card.orion {
+        .portrait-card.hero-orion {
             background: radial-gradient(circle at 50% 38%, #4d1924 0%, #17080c 85%);
             border-color: #ff6b4a;
             box-shadow: inset 0 0 0 2px #7a1626, 0 5px 14px rgba(0, 0, 0, 0.85);
+        }
+
+        .portrait-card.hero-aurora {
+            background: radial-gradient(circle at 50% 38%, #153c5e 0%, #081524 85%);
+            border-color: #73eff7;
+            box-shadow: inset 0 0 0 2px #1c6b94, 0 5px 14px rgba(0, 0, 0, 0.85);
         }
 
         .portrait-card canvas {
@@ -331,10 +452,16 @@
             margin-bottom: 5px;
         }
 
-        #speakerTag.orion {
+        #speakerTag.hero-orion {
             background: #5e1622;
             color: #ff9e7d;
             border-color: #ff6b4a;
+        }
+
+        #speakerTag.hero-aurora {
+            background: #10324f;
+            color: #9bf6ff;
+            border-color: #73eff7;
         }
 
         #dialogueText {
@@ -505,7 +632,7 @@
             box-shadow: 0 5px 0 rgba(60, 18, 34, 0.65);
         }
 
-        /* Fiery Force Field Button (Unlocks in Level 3 & Level 4) */
+        /* Force Field Button (Unlocks in Level 3 & Level 4; styled for fire or ice) */
         .touch-btn.shield-btn {
             width: 66px;
             height: 66px;
@@ -515,8 +642,21 @@
             color: #ffcd75;
         }
 
+        .touch-btn.shield-btn.ice-mode {
+            background: rgba(24, 108, 152, 0.68);
+            border-color: rgba(115, 239, 247, 0.88);
+            box-shadow: 0 5px 0 rgba(10, 44, 68, 0.75);
+            color: #9bf6ff;
+        }
+
         .touch-btn.shield-btn.pressed {
             background: rgba(239, 125, 87, 0.92);
+            border-color: #ffffff;
+            color: #ffffff;
+        }
+
+        .touch-btn.shield-btn.ice-mode.pressed {
+            background: rgba(65, 166, 246, 0.92);
             border-color: #ffffff;
             color: #ffffff;
         }
@@ -640,6 +780,34 @@
             <div id="level-banner-sub">EMERALD CANOPY</div>
         </div>
 
+        <!-- Character Selection Screen (Before Opening Cutscene on New Game) -->
+        <div id="char-select-screen" class="hidden">
+            <div class="char-select-title">CHOOSE YOUR HERO</div>
+            <div class="char-cards-row">
+                <div id="card-orion" class="char-card orion-card selected" role="button" tabindex="0">
+                    <div class="char-preview-box">
+                        <canvas id="orionSelectCanvas" width="16" height="16"></canvas>
+                    </div>
+                    <div class="char-name">ORION</div>
+                    <div class="char-role">FIRE WIZARD</div>
+                    <div class="char-desc">Red &amp; black staff wizard. Hurls fire blasts &amp; raises a fiery shield (LVL 3+).</div>
+                </div>
+
+                <div id="card-aurora" class="char-card aurora-card" role="button" tabindex="0">
+                    <div class="char-preview-box">
+                        <canvas id="auroraSelectCanvas" width="16" height="16"></canvas>
+                    </div>
+                    <div class="char-name">AURORA</div>
+                    <div class="char-role">ICE ENCHANTRESS</div>
+                    <div class="char-desc">Blue &amp; white enchantress. Casts ice blasts from hands &amp; an icy shield (LVL 3+).</div>
+                </div>
+            </div>
+            <div class="char-select-actions">
+                <button id="confirm-hero-btn" type="button" class="retro-btn primary-green">BEGIN CHRONICLE &gt;</button>
+                <button id="back-to-title-btn" type="button" class="retro-btn secondary-slate">BACK</button>
+            </div>
+        </div>
+
         <!-- Two-Stage Opening Cutscene -->
         <div id="cutsceneOverlay" class="hidden">
             <div id="cutsceneHeader">
@@ -652,8 +820,8 @@
                     <canvas id="kingPortraitCanvas" width="24" height="24"></canvas>
                 </div>
                 <div style="flex: 1;"></div>
-                <div id="orionPortraitCard" class="portrait-card orion hidden">
-                    <canvas id="orionPortraitCanvas" width="24" height="24"></canvas>
+                <div id="heroPortraitCard" class="portrait-card hero-orion hidden">
+                    <canvas id="heroPortraitCanvas" width="24" height="24"></canvas>
                 </div>
             </div>
 
@@ -671,8 +839,8 @@
                 Conquer 4 escalating jungle stages&mdash;from ancient canopies to the toxic abyss!
             </p>
             <div class="controls-hint">
-                TAP SCREEN: Aim &amp; Throw Fireball &bull; JUMP x2: Double / Mid-Air Jump<br>
-                FLOWERS: +1 HP &bull; LVL 3+: Fiery Force Field Button unlocks!
+                TAP SCREEN: Aim &amp; Cast Magic &bull; JUMP x2: Double / Mid-Air Jump<br>
+                FLOWERS: +1 HP &bull; LVL 3+: Force Field Button unlocks!
             </div>
             <div class="menu-btn-row" id="start-btn-row">
                 <button id="continue-btn" type="button" class="retro-btn primary-green hidden">CONTINUE LEVEL 2</button>
@@ -729,7 +897,7 @@
                 </button>
             </div>
             <div class="action-group">
-                <button class="touch-btn shield-btn hidden" id="btn-shield" type="button" aria-label="Fiery Force Field">
+                <button class="touch-btn shield-btn hidden" id="btn-shield" type="button" aria-label="Force Field">
                     <svg viewBox="0 0 16 16"><path d="M8 1C5.8 3.6 3 6.1 3 9.5 3 12.6 5.2 15 8 15s5-2.4 5-5.5C13 6.1 10.2 3.6 8 1zm0 11.8c-1.5 0-2.6-1.1-2.6-2.7 0-1.5 1.3-2.9 2.6-4.4 1.3 1.5 2.6 2.9 2.6 4.4 0 1.6-1.1 2.7-2.6 2.7z"/></svg>
                 </button>
                 <button class="touch-btn jump-btn" id="btn-jump" type="button" aria-label="Jump">
@@ -744,11 +912,11 @@
 /**
  * ============================================================================
  * JUNGLE WIZARD - Complete Mobile Pixel Art Platformer
- * - Current-level respawn on death (preserves stage & checkpoint score)
- * - In-game Pause menu ('II') with Resume, Restart Level & Save/Quit
- * - Persistent localStorage level & score progress on Start Screen
+ * - Character selection screen before opening cutscene (Orion: Fire / Aurora: Ice)
+ * - Dynamic cutscene dialogue, speaker tags & portraits for Orion or Aurora
+ * - Persistent localStorage level, score & character selection
+ * - Current-level respawn on death & Pause menu ('II')
  * - 4 Progressive Jungle Stages with grounded crystal spikes & green ptero venom
- * - Two-stage opening cutscene with King Norman II & Orion portraits
  * ============================================================================
  */
 
@@ -757,8 +925,25 @@ const STORAGE_KEYS = {
     LEVEL: 'jungle_wizard_saved_level',
     SCORE: 'jungle_wizard_saved_score',
     GEMS: 'jungle_wizard_saved_gems',
-    FLOWERS: 'jungle_wizard_saved_flowers'
+    FLOWERS: 'jungle_wizard_saved_flowers',
+    CHARACTER: 'jungle_wizard_selected_character'
 };
+
+function getSavedCharacter() {
+    try {
+        const c = localStorage.getItem(STORAGE_KEYS.CHARACTER);
+        return (c === 'aurora' || c === 'orion') ? c : 'orion';
+    } catch (e) {
+        return 'orion';
+    }
+}
+
+function saveCharacterSelection(charId) {
+    try {
+        const valid = (charId === 'aurora' || charId === 'orion') ? charId : 'orion';
+        localStorage.setItem(STORAGE_KEYS.CHARACTER, valid);
+    } catch (e) {}
+}
 
 function getSavedProgress() {
     try {
@@ -918,8 +1103,13 @@ class SoundFX {
 
     blip(who) {
         if (who === 'king') this.playTone(190 + Math.random() * 22, 175, 0.035, 'triangle', 0.06);
-        else if (who === 'orion') this.playTone(300 + Math.random() * 28, 285, 0.035, 'square', 0.045);
-        else this.playTone(245 + Math.random() * 20, 235, 0.035, 'sine', 0.045);
+        else if (who === 'hero' && (typeof game === 'undefined' || game.character === 'aurora')) {
+            this.playTone(520 + Math.random() * 45, 640, 0.035, 'triangle', 0.05);
+        } else if (who === 'hero') {
+            this.playTone(300 + Math.random() * 28, 285, 0.035, 'square', 0.045);
+        } else {
+            this.playTone(245 + Math.random() * 20, 235, 0.035, 'sine', 0.045);
+        }
     }
 
     step(alt = false) {
@@ -940,14 +1130,25 @@ class SoundFX {
         this.playTone(170, 260, 0.08, 'square', 0.11);
     }
 
-    fireball() {
-        this.playNoise(0.16, 950, 'bandpass', 0.14);
-        this.playTone(720, 170, 0.19, 'sawtooth', 0.14);
+    fireball(isIce = false) {
+        if (isIce) {
+            this.playNoise(0.14, 2400, 'highpass', 0.11);
+            this.playTone(1180, 520, 0.16, 'sine', 0.13);
+            this.playTone(1620, 880, 0.11, 'triangle', 0.08, 0.03);
+        } else {
+            this.playNoise(0.16, 950, 'bandpass', 0.14);
+            this.playTone(720, 170, 0.19, 'sawtooth', 0.14);
+        }
     }
 
-    explosion() {
-        this.playNoise(0.24, 340, 'lowpass', 0.2);
-        this.playTone(170, 38, 0.24, 'sawtooth', 0.16);
+    explosion(isIce = false) {
+        if (isIce) {
+            this.playNoise(0.2, 2100, 'bandpass', 0.16);
+            this.playTone(1420, 420, 0.18, 'triangle', 0.14);
+        } else {
+            this.playNoise(0.24, 340, 'lowpass', 0.2);
+            this.playTone(170, 38, 0.24, 'sawtooth', 0.16);
+        }
     }
 
     gem() {
@@ -1010,16 +1211,28 @@ class SoundFX {
         this.playNoise(0.14, 1400, 'bandpass', v * 0.9, 0.02);
     }
 
-    fireShieldActivate() {
-        this.playNoise(0.22, 680, 'bandpass', 0.16);
-        this.playTone(190, 440, 0.18, 'sawtooth', 0.14, 0);
-        this.playTone(320, 640, 0.16, 'triangle', 0.11, 0.04);
+    fireShieldActivate(isIce = false) {
+        if (isIce) {
+            this.playNoise(0.18, 2200, 'highpass', 0.12);
+            this.playTone(620, 1280, 0.18, 'sine', 0.12, 0);
+            this.playTone(920, 1560, 0.15, 'triangle', 0.1, 0.04);
+        } else {
+            this.playNoise(0.22, 680, 'bandpass', 0.16);
+            this.playTone(190, 440, 0.18, 'sawtooth', 0.14, 0);
+            this.playTone(320, 640, 0.16, 'triangle', 0.11, 0.04);
+        }
     }
 
-    fireShieldVaporize() {
-        this.playNoise(0.18, 1200, 'bandpass', 0.18);
-        this.playTone(580, 1120, 0.12, 'sawtooth', 0.15, 0);
-        this.playTone(880, 1480, 0.11, 'sine', 0.13, 0.04);
+    fireShieldVaporize(isIce = false) {
+        if (isIce) {
+            this.playNoise(0.16, 2600, 'bandpass', 0.15);
+            this.playTone(1240, 1780, 0.12, 'sine', 0.13);
+            this.playTone(1580, 980, 0.1, 'triangle', 0.1, 0.04);
+        } else {
+            this.playNoise(0.18, 1200, 'bandpass', 0.18);
+            this.playTone(580, 1120, 0.12, 'sawtooth', 0.15, 0);
+            this.playTone(880, 1480, 0.11, 'sine', 0.13, 0.04);
+        }
     }
 
     crumbleWarning() {
@@ -1070,10 +1283,16 @@ const PALETTE = {
     'I': '#73eff7',   // Ice Cyan Highlight
     'X': '#ff1e7a',   // High-Contrast Neon Magenta Spike Core
     'Z': '#ff85b3',   // Bright Pink-White Spike Edge
-    'V': '#9e0047'    // Deep Toxic Crimson Spike Base
+    'V': '#9e0047',   // Deep Toxic Crimson Spike Base
+    'A': '#f4c095',   // Fair Skin Tone
+    'S': '#d99b72',   // Warm Skin Shadow
+    'D': '#ffd447',   // Golden Blonde Hair
+    'J': '#c79216',   // Rich Blonde Hair Shadow
+    'U': '#2b7de9',   // Royal Blue Robe
+    'Q': '#5cb8ff'    // Sky Blue Robe Highlight
 };
 
-// Cutscene Portrait Palette (from Cutscene.html)
+// Cutscene Portrait Palette
 const PORTRAIT_PAL = {
     '.': null,
     'K': '#12151f', // Crisp outline
@@ -1082,9 +1301,15 @@ const PORTRAIT_PAL = {
     'Y': '#ffd166', // Gold / flame / crown
     'W': '#f8fafc', // White / bone / marble
     'C': '#48cae4', // Arcane cyan eyes
-    'F': '#f4c095', // Royal skin
+    'I': '#9bf6ff', // Frost highlight
+    'B': '#2575c4', // Elven blue robe
+    'Q': '#64b5f6', // Sky blue robe highlight
+    'D': '#ffd447', // Golden blonde hair
+    'J': '#c79216', // Blonde hair shadow
+    'F': '#f4c095', // Fair skin
+    'S': '#d99b72', // Skin shadow
     'E': '#6a2c91', // Royal purple velvet
-    'H': '#e2e8f0'  // Silver-white beard
+    'H': '#e2e8f0'  // Silver-white beard / hair
 };
 
 const PORTRAITS = {
@@ -1139,10 +1364,56 @@ const PORTRAITS = {
         "KRRRRRRRRRRRRRRRRRRRRRRK",
         "KRRRRRRRRRRRRRRRRRRRRRRK",
         "KKKKKKKKKKKKKKKKKKKKKKKK"
+    ],
+    aurora: [
+        ".........KDDDDK.........",
+        ".......KDDDDDDDDK.......",
+        "......KDDWWWWWWDDK......",
+        ".....KDDDDDDDDDDDDK.....",
+        ".....KDDJDDDDDDJDDK.....",
+        ".....KDDDDDDDDDDDDK.....",
+        "....KDDKFFFFFFFFKDDK....",
+        "...KKDDKFFCCFFCCKDDKK...",
+        "..KDDDKFFCIFFCIFFKDDDK..",
+        "..KDDDKFFFFFFFFFFKDDDK..",
+        "...KDDKFFSSSSSSFFKDDK...",
+        "...KDDKKFFFFFFFFKKDDK...",
+        "....KDDJKKKKKKKKJDDK....",
+        "....KDDJBBBBBBBBJDDK....",
+        "...KDDJBBWWWWWWBBJDDK...",
+        "..KDDJBBBBQQBBBBBBJDDK..",
+        "..KDDJBBBBQQQQBBBBJDDK..",
+        ".KDDDJBBBBWWWWBBBBJDDDK.",
+        ".KDDDJBBBBBBBBBBBBJDDDK.",
+        "KDDDDJBBBBWWWWBBBBJDDDDK",
+        "KDDDDJBBWWBBBBWWBBJDDDDK",
+        "KDDDDJBBWWWWWWWWBBJDDDDK",
+        "KDDDDJBBBBBBBBBBBBJDDDDK",
+        "KKKKKKKKKKKKKKKKKKKKKKKK"
     ]
 };
 
-function paintPortraitCanvases() {
+function paintCharacterSelectCanvases() {
+    const paint = (id, mat) => {
+        const c = document.getElementById(id);
+        if (!c) return;
+        const pctx = c.getContext('2d');
+        pctx.clearRect(0, 0, c.width, c.height);
+        for (let r = 0; r < mat.length; r++) {
+            for (let col = 0; col < mat[r].length; col++) {
+                const color = PALETTE[mat[r][col]];
+                if (color) {
+                    pctx.fillStyle = color;
+                    pctx.fillRect(col, r, 1, 1);
+                }
+            }
+        }
+    };
+    paint('orionSelectCanvas', SPRITES.wizardIdle);
+    paint('auroraSelectCanvas', SPRITES.auroraIdle);
+}
+
+function paintPortraitCanvases(activeHero = 'orion') {
     const paint = (id, mat) => {
         const c = document.getElementById(id);
         if (!c) return;
@@ -1159,7 +1430,7 @@ function paintPortraitCanvases() {
         }
     };
     paint('kingPortraitCanvas', PORTRAITS.king);
-    paint('orionPortraitCanvas', PORTRAITS.orion);
+    paint('heroPortraitCanvas', activeHero === 'aurora' ? PORTRAITS.aurora : PORTRAITS.orion);
 }
 
 const SPRITES = {
@@ -1288,6 +1559,133 @@ const SPRITES = {
         '...KK..KK.....',
         '...KK..KK.....',
         '....K..K......'
+    ],
+    // Aurora (Elven Enchantress: fair skin, pointed ears, long golden-blonde hair, blue robe & white trims)
+    auroraIdle: [
+        '.....DDDD.....',
+        '....DDDDDD....',
+        '...DDWWWWDD...',
+        '...DDDDDDDD...',
+        '..DDDAAAAADD..',
+        '..DDAAIIAAAD..',
+        '.ADDAAAAAAAAA.',
+        '..DDDSAAAAJDD.',
+        '..DDJUUUUUJDD.',
+        '..DDJUWWWWUJD.',
+        '..DDJUUUUUUJD.',
+        '..DDJUWWWWUJD.',
+        '..DDJUUUUUUJD.',
+        '...DDWWWWWWDD.',
+        '...UU....UU...',
+        '..WWU....UWW..'
+    ],
+    auroraRun1: [
+        '.....DDDD.....',
+        '....DDDDDD....',
+        '...DDWWWWDD...',
+        '...DDDDDDDD...',
+        '..DDDAAAAADD..',
+        '..DDAAIIAAAD..',
+        '.ADDAAAAAAAAA.',
+        '..DDDSAAAAJDD.',
+        '..DDJUUUUUJDD.',
+        '..DDJUWWWWUJD.',
+        '..DDJUUUUUUJD.',
+        '...DDWWWWWWDD.',
+        '...UU....UU...',
+        '..WWU.....UWW.',
+        '.WW........WW.',
+        '..............'
+    ],
+    auroraRun2: [
+        '.....DDDD.....',
+        '....DDDDDD....',
+        '...DDWWWWDD...',
+        '...DDDDDDDD...',
+        '..DDDAAAAADD..',
+        '..DDAAIIAAAD..',
+        '.ADDAAAAAAAAA.',
+        '..DDDSAAAAJDD.',
+        '..DDJUUUUUJDD.',
+        '..DDJUWWWWUJD.',
+        '..DDJUUUUUUJD.',
+        '...DDWWWWWWDD.',
+        '....UU..UU....',
+        '....WW..WW....',
+        '....W....W....',
+        '..............'
+    ],
+    auroraJump: [
+        '.....DDDD.....',
+        '....DDDDDD....',
+        '...DDWWWWDD...',
+        '...DDDDDDDD...',
+        '..DDDAAAAADD..',
+        '..DDAAIIAAAD..',
+        '.ADDAAAAAAAAA.',
+        '..DDJUWWWWUJD.',
+        '.ADDJUUUUUUJDA',
+        '..DDJUUUUUUJD.',
+        '...DDWWWWWWDD.',
+        '....UUUUUUUU..',
+        '..WWU......UWW',
+        '.WW..........W',
+        '..............',
+        '..............'
+    ],
+    auroraDoubleJump: [
+        '.....DDDD.....',
+        '....DDDDDD....',
+        '...DDWWWWDD...',
+        '...DDDDDDDD...',
+        '..DDDAAAAADD..',
+        '..DDAAIIAAAD..',
+        '.ADDAAAAAAAAA.',
+        'ADD.JUUUUUUJ.A',
+        'DDD.JUWWWWUJ.D',
+        '.DD.JUUUUUUJ.D',
+        '...DDWWWWWWDD.',
+        '..WWWWWWWWWWWW',
+        'W.UU......UU.W',
+        '..WW......WW..',
+        '..............',
+        '..............'
+    ],
+    auroraCast: [
+        '.....DDDD.....',
+        '....DDDDDD....',
+        '...DDWWWWDD...',
+        '...DDDDDDDD...',
+        '..DDDAAAAADD..',
+        '..DDAAIIAAAD..',
+        '.ADDAAAAAAAAA.',
+        '..DDJUUUUUJDD.',
+        '..DDJUWWWWUJA.',
+        '..DDJUUUUUUJAW',
+        '...DDWWWWWWDD.',
+        '....UUUUUUUU..',
+        '....UU....UU..',
+        '...WWU....UWW.',
+        '..............',
+        '..............'
+    ],
+    auroraHang: [
+        '.........UU...',
+        '.....DDDDWW...',
+        '....DDDDDDW...',
+        '...DDWWWWDD...',
+        '...DDDDDDDD...',
+        '..DDDAAAAADD..',
+        '..DDAAIIAAAD..',
+        '.ADDAAAAAAAAA.',
+        '..DDJUUUUUJDD.',
+        '..DDJUWWWWUJD.',
+        '...DDWWWWWWDD.',
+        '....UUUUUUUU..',
+        '....UU..UU....',
+        '....WW..WW....',
+        '.....W..W.....',
+        '..............'
     ],
     wizardSkeleton: [
         '..............',
@@ -1450,46 +1848,85 @@ function preRenderSprites() {
     }
 }
 
-// --- 2B. TWO-STAGE OPENING CUTSCENE ---
-const CUTSCENE_LINES = [
-    {
-        scene: 'kingdom',
-        location: 'KINGDOM OF AETHELGARD',
-        speaker: 'narrator',
-        tag: 'ROYAL CHRONICLE',
-        text: 'The Kingdom of Aethelgard... gleaming spires of white marble and gold, standing watch over the shadowed wilds of The Veridian Abyss.'
-    },
-    {
-        scene: 'throne',
-        location: 'ROYAL COURT OF AETHELGARD',
-        speaker: 'king',
-        tag: 'KING NORMAN II',
-        text: 'Ah, Orion! Thank the stars you have answered my call. Evil forces have breached our borders and kidnapped my daughter, Princess Nova, dragging her deep into the perilous Veridian Abyss!'
-    },
-    {
-        scene: 'throne',
-        location: 'ROYAL COURT OF AETHELGARD',
-        speaker: 'king',
-        tag: 'KING NORMAN II',
-        text: 'I have already sent my greatest knight, Sir Moosimus, to find Nova, but he has not returned. Keep an eye out for him in the wilds and help him return if you can.'
-    },
-    {
-        scene: 'throne',
-        location: 'ROYAL COURT OF AETHELGARD',
-        speaker: 'orion',
-        tag: 'ORION',
-        text: 'Fear not, Your Majesty. No goblin horde or flying beast shall stop me. I will find Sir Moosimus and bring Princess Nova home.'
-    },
-    {
-        scene: 'throne',
-        location: 'ROYAL COURT OF AETHELGARD',
-        speaker: 'king',
-        tag: 'KING NORMAN II',
-        text: 'Brave wizard... Should you succeed, the kingdom of Aethelgard and its throne will be forever in your debt. May the ancient magic guide your steps!'
+function getHeroSpriteName(baseAction) {
+    const isAurora = (typeof game !== 'undefined' && game.character === 'aurora');
+    if (!isAurora) {
+        if (baseAction === 'idle') return 'wizardIdle';
+        if (baseAction === 'run1') return 'wizardRun1';
+        if (baseAction === 'run2') return 'wizardRun2';
+        if (baseAction === 'jump') return 'wizardJump';
+        if (baseAction === 'doubleJump') return 'wizardDoubleJump';
+        if (baseAction === 'cast') return 'wizardCast';
+        if (baseAction === 'hang') return 'wizardHang';
+        return 'wizardIdle';
     }
-];
+    if (baseAction === 'idle') return 'auroraIdle';
+    if (baseAction === 'run1') return 'auroraRun1';
+    if (baseAction === 'run2') return 'auroraRun2';
+    if (baseAction === 'jump') return 'auroraJump';
+    if (baseAction === 'doubleJump') return 'auroraDoubleJump';
+    if (baseAction === 'cast') return 'auroraCast';
+    if (baseAction === 'hang') return 'auroraHang';
+    return 'auroraIdle';
+}
+
+function syncShieldButtonAppearance() {
+    const shieldBtn = document.getElementById('btn-shield');
+    if (!shieldBtn) return;
+    shieldBtn.classList.toggle('ice-mode', game.character === 'aurora');
+}
+
+// --- 2B. TWO-STAGE OPENING CUTSCENE WITH DYNAMIC CHARACTER DIALOGUE ---
+function buildCutsceneLines(charId) {
+    const isAurora = charId === 'aurora';
+    const heroName = isAurora ? 'Aurora' : 'Orion';
+    const heroTag = isAurora ? 'AURORA' : 'ORION';
+
+    return [
+        {
+            scene: 'kingdom',
+            location: 'KINGDOM OF AETHELGARD',
+            speaker: 'narrator',
+            tag: 'ROYAL CHRONICLE',
+            text: 'The Kingdom of Aethelgard... gleaming spires of white marble and gold, standing watch over the shadowed wilds of The Veridian Abyss.'
+        },
+        {
+            scene: 'throne',
+            location: 'ROYAL COURT OF AETHELGARD',
+            speaker: 'king',
+            tag: 'KING NORMAN II',
+            text: `Ah, ${heroName}! Thank the stars you have answered my call. Evil forces have breached our borders and kidnapped my daughter, Princess Nova, dragging her deep into the perilous Veridian Abyss!`
+        },
+        {
+            scene: 'throne',
+            location: 'ROYAL COURT OF AETHELGARD',
+            speaker: 'king',
+            tag: 'KING NORMAN II',
+            text: 'I have already sent my greatest knight, Sir Moosimus, to find Nova, but he has not returned. Keep an eye out for him in the wilds and help him return if you can.'
+        },
+        {
+            scene: 'throne',
+            location: 'ROYAL COURT OF AETHELGARD',
+            speaker: 'hero',
+            tag: heroTag,
+            text: isAurora
+                ? 'Fear not, Your Majesty. No goblin horde or flying beast shall stop my frost. I will find Sir Moosimus and bring Princess Nova home.'
+                : 'Fear not, Your Majesty. No goblin horde or flying beast shall stop me. I will find Sir Moosimus and bring Princess Nova home.'
+        },
+        {
+            scene: 'throne',
+            location: 'ROYAL COURT OF AETHELGARD',
+            speaker: 'king',
+            tag: 'KING NORMAN II',
+            text: isAurora
+                ? `Brave enchantress... Should you succeed, the kingdom of Aethelgard and its throne will be forever in your debt. May your ice magic guide your steps, ${heroName}!`
+                : `Brave wizard... Should you succeed, the kingdom of Aethelgard and its throne will be forever in your debt. May the ancient magic guide your steps, ${heroName}!`
+        }
+    ];
+}
 
 const cutsceneState = {
+    lines: buildCutsceneLines('orion'),
     index: 0,
     charIndex: 0,
     tick: 0,
@@ -1497,33 +1934,39 @@ const cutsceneState = {
 };
 
 function updateCutsceneUI() {
-    const entry = CUTSCENE_LINES[cutsceneState.index];
+    const entry = cutsceneState.lines[cutsceneState.index];
     if (!entry) return;
 
+    const isAurora = game.character === 'aurora';
     const locEl = document.getElementById('cutsceneLocation');
     const tagEl = document.getElementById('speakerTag');
     const textEl = document.getElementById('dialogueText');
     const promptEl = document.getElementById('dialoguePrompt');
     const kingCard = document.getElementById('kingPortraitCard');
-    const orionCard = document.getElementById('orionPortraitCard');
+    const heroCard = document.getElementById('heroPortraitCard');
 
     if (locEl) locEl.textContent = entry.location;
     if (tagEl) {
         tagEl.textContent = entry.tag;
-        if (entry.speaker === 'orion') tagEl.classList.add('orion');
-        else tagEl.classList.remove('orion');
+        tagEl.classList.remove('hero-orion', 'hero-aurora');
+        if (entry.speaker === 'hero') {
+            tagEl.classList.add(isAurora ? 'hero-aurora' : 'hero-orion');
+        }
     }
 
-    if (kingCard && orionCard) {
+    if (kingCard && heroCard) {
+        heroCard.classList.remove('hero-orion', 'hero-aurora');
+        heroCard.classList.add(isAurora ? 'hero-aurora' : 'hero-orion');
+
         if (entry.speaker === 'king') {
             kingCard.classList.remove('hidden');
-            orionCard.classList.add('hidden');
-        } else if (entry.speaker === 'orion') {
-            orionCard.classList.remove('hidden');
+            heroCard.classList.add('hidden');
+        } else if (entry.speaker === 'hero') {
+            heroCard.classList.remove('hidden');
             kingCard.classList.add('hidden');
         } else {
             kingCard.classList.add('hidden');
-            orionCard.classList.add('hidden');
+            heroCard.classList.add('hidden');
         }
     }
 
@@ -1531,7 +1974,7 @@ function updateCutsceneUI() {
     if (promptEl) {
         if (cutsceneState.charIndex < entry.text.length) {
             promptEl.textContent = 'TAP TO FAST-FORWARD ▶▶';
-        } else if (cutsceneState.index < CUTSCENE_LINES.length - 1) {
+        } else if (cutsceneState.index < cutsceneState.lines.length - 1) {
             promptEl.textContent = 'TAP TO CONTINUE ▼';
         } else {
             promptEl.textContent = 'TAP TO ENTER THE JUNGLE ▶';
@@ -1545,6 +1988,7 @@ function startOpeningCutscene(onDone) {
     resizeCanvas();
     clearInputs();
 
+    cutsceneState.lines = buildCutsceneLines(game.character);
     cutsceneState.index = 0;
     cutsceneState.charIndex = 0;
     cutsceneState.tick = 0;
@@ -1552,6 +1996,7 @@ function startOpeningCutscene(onDone) {
 
     game.state = 'CUTSCENE';
     document.getElementById('start-screen').classList.add('hidden');
+    document.getElementById('char-select-screen').classList.add('hidden');
     document.getElementById('pause-screen').classList.add('hidden');
     document.getElementById('gameover-screen').classList.add('hidden');
     document.getElementById('victory-screen').classList.add('hidden');
@@ -1562,13 +2007,13 @@ function startOpeningCutscene(onDone) {
     csOverlay.style.display = 'flex';
     csOverlay.classList.remove('hidden');
 
-    paintPortraitCanvases();
+    paintPortraitCanvases(game.character);
     updateCutsceneUI();
 }
 
 function advanceCutscene() {
     if (game.state !== 'CUTSCENE') return;
-    const entry = CUTSCENE_LINES[cutsceneState.index];
+    const entry = cutsceneState.lines[cutsceneState.index];
     if (!entry) {
         endCutscene();
         return;
@@ -1578,11 +2023,11 @@ function advanceCutscene() {
         updateCutsceneUI();
         return;
     }
-    if (cutsceneState.index < CUTSCENE_LINES.length - 1) {
+    if (cutsceneState.index < cutsceneState.lines.length - 1) {
         cutsceneState.index++;
         cutsceneState.charIndex = 0;
         cutsceneState.tick = 0;
-        sfx.blip(CUTSCENE_LINES[cutsceneState.index].speaker);
+        sfx.blip(cutsceneState.lines[cutsceneState.index].speaker);
         updateCutsceneUI();
     } else {
         endCutscene();
@@ -1602,7 +2047,7 @@ function endCutscene() {
 }
 
 function stepCutscene() {
-    const entry = CUTSCENE_LINES[cutsceneState.index];
+    const entry = cutsceneState.lines[cutsceneState.index];
     if (!entry) return;
     if (cutsceneState.charIndex < entry.text.length) {
         cutsceneState.tick++;
@@ -1617,7 +2062,6 @@ function stepCutscene() {
 
 // Stage 1 Cutscene Canvas: Wide Establishing Shot of Aethelgard & Distant Veridian Abyss
 function renderAethelgardPanorama(ctx, w, h, frame) {
-    // Twilight sky over Aethelgard
     const sky = ctx.createLinearGradient(0, 0, 0, h * 0.72);
     sky.addColorStop(0, '#0a162e');
     sky.addColorStop(0.5, '#1c3663');
@@ -1626,7 +2070,6 @@ function renderAethelgardPanorama(ctx, w, h, frame) {
     ctx.fillStyle = sky;
     ctx.fillRect(0, 0, w, h);
 
-    // Stars & golden crescent moon
     const starCoords = [
         [0.07, 0.12], [0.18, 0.21], [0.29, 0.09], [0.42, 0.18], [0.53, 0.10],
         [0.64, 0.20], [0.75, 0.11], [0.88, 0.19], [0.94, 0.09]
@@ -1645,7 +2088,6 @@ function renderAethelgardPanorama(ctx, w, h, frame) {
     ctx.fillStyle = '#182f57';
     ctx.fillRect(mx - 2, my - 5, 7, 9);
 
-    // Distant mountain silhouettes
     ctx.fillStyle = '#283d63';
     for (let x = -12; x < w + 40; x += 42) {
         const peakH = 30 + ((Math.abs(x * 11) % 3) * 9);
@@ -1655,7 +2097,6 @@ function renderAethelgardPanorama(ctx, w, h, frame) {
         }
     }
 
-    // Distant Jungle Horizon (The Veridian Abyss on right)
     const horizonY = Math.round(h * 0.56);
     const jungleX = Math.round(w * 0.46);
     ctx.fillStyle = '#0e2d1d';
@@ -1668,7 +2109,6 @@ function renderAethelgardPanorama(ctx, w, h, frame) {
         ctx.fillRect(tx + 2, horizonY - th + 2, 8, 4);
     }
 
-    // Distant temple ruins peeking through the jungle canopy
     const ruinX = Math.round(w * 0.82);
     ctx.fillStyle = '#334155';
     ctx.fillRect(ruinX, horizonY - 16, 18, 12);
@@ -1676,7 +2116,6 @@ function renderAethelgardPanorama(ctx, w, h, frame) {
     ctx.fillStyle = '#80ed99';
     ctx.fillRect(ruinX + 7, horizonY - 13, 4, 4);
 
-    // Emerald Valley & Winding Road to the Jungle
     ctx.fillStyle = '#18472e';
     ctx.fillRect(0, horizonY + 12, w, h - (horizonY + 12));
     ctx.fillStyle = '#236340';
@@ -1690,7 +2129,6 @@ function renderAethelgardPanorama(ctx, w, h, frame) {
         ctx.fillRect(rx, ry, Math.round(6 + t * 9), 3);
     }
 
-    // White Marble Citadel Terrace
     const baseX = Math.round(w * 0.05);
     const baseY = horizonY + 15;
     const wallW = Math.round(w * 0.38);
@@ -1699,7 +2137,6 @@ function renderAethelgardPanorama(ctx, w, h, frame) {
     ctx.fillStyle = '#e2e8f0';
     ctx.fillRect(baseX + 3, baseY - 13, wallW + 2, 13);
 
-    // Helper for White Marble Spires with Gleaming Golden Roofs & Trim
     const drawSpire = (sx, sy, sw, sh, roofH) => {
         ctx.fillStyle = '#f8fafc';
         ctx.fillRect(sx, sy - sh, sw, sh);
@@ -1770,7 +2207,6 @@ function renderThroneRoom(ctx, w, h, frame) {
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, w, h);
 
-    // Stone masonry lines
     ctx.fillStyle = '#1e122e';
     for (let y = 14; y < h - 40; y += 16) {
         ctx.fillRect(0, y, w, 2);
@@ -1778,7 +2214,6 @@ function renderThroneRoom(ctx, w, h, frame) {
         for (let x = off; x < w; x += 36) ctx.fillRect(x, y, 2, 16);
     }
 
-    // Palace windows overlooking the jungle
     [Math.round(w * 0.25), Math.round(w * 0.75)].forEach((wx) => {
         ctx.fillStyle = '#3b2554';
         ctx.fillRect(wx - 25, 22, 50, 82);
@@ -1793,7 +2228,6 @@ function renderThroneRoom(ctx, w, h, frame) {
         ctx.fillRect(wx - 22, 60, 44, 2);
     });
 
-    // Royal banners
     [Math.round(w * 0.10), Math.round(w * 0.90)].forEach((bx) => {
         ctx.fillStyle = '#ffd166';
         ctx.fillRect(bx - 15, 18, 30, 4);
@@ -1805,7 +2239,6 @@ function renderThroneRoom(ctx, w, h, frame) {
         ctx.fillRect(bx - 4, 42, 8, 10);
     });
 
-    // Throne silhouette
     const cx = Math.round(w * 0.5);
     ctx.fillStyle = '#3d1c2e';
     ctx.fillRect(cx - 24, 34, 48, 96);
@@ -1814,7 +2247,6 @@ function renderThroneRoom(ctx, w, h, frame) {
     ctx.fillRect(cx - 26, 30, 4, 100);
     ctx.fillRect(cx + 22, 30, 4, 100);
 
-    // Wall torches
     [Math.round(w * 0.39), Math.round(w * 0.61)].forEach((tx) => {
         ctx.fillStyle = '#5c6b73';
         ctx.fillRect(tx - 2, 64, 4, 16);
@@ -1827,7 +2259,6 @@ function renderThroneRoom(ctx, w, h, frame) {
         ctx.fillRect(tx - 3, 55 + fl * 0.5, 6, 8);
     });
 
-    // Royal floor & red carpet
     const fy = h - 42;
     ctx.fillStyle = '#2d2340';
     ctx.fillRect(0, fy, w, 42);
@@ -1839,7 +2270,6 @@ function renderThroneRoom(ctx, w, h, frame) {
 
 // --- 3. 4-STAGE PROGRESSIVE JUNGLE CAMPAIGN ---
 const LEVELS = [
-    // LEVEL 1: EASY (Static mossy jungle terrain, grounded crystal spikes, non-shooting pteros, healing flowers, 5 HP)
     {
         name: 'LEVEL 1',
         subtitle: 'EMERALD CANOPY (EASY)',
@@ -1864,7 +2294,6 @@ const LEVELS = [
             '#########..###############......#############...##########..#########...########'
         ]
     },
-    // LEVEL 2: MEDIUM (Authentic Mossy Moving Stone Ferries, High Cliff Elevators, Crumbling Bridges Over Open Chasms & Grounded Spikes)
     {
         name: 'LEVEL 2',
         subtitle: 'SHIFTING RUINS (MEDIUM)',
@@ -1889,7 +2318,6 @@ const LEVELS = [
             '########..############.#######..........................................................................######'
         ]
     },
-    // LEVEL 3: HARD (Aggressive Forward-Facing Venom Pterodactyls + Fiery Force Field + Crumbling Bridges & Grounded Spikes)
     {
         name: 'LEVEL 3',
         subtitle: 'SCORCHED GORGE (HARD)',
@@ -1914,7 +2342,6 @@ const LEVELS = [
             '#######..###########.######.........................................................................................####'
         ]
     },
-    // LEVEL 4: LEGENDARY (Toxic Air 1 HP, Zero Flowers, Aggressive Venom Pteros, Crumbling Abyss Bridges & Grounded Spikes)
     {
         name: 'LEVEL 4',
         subtitle: 'TOXIC ABYSS (LEGENDARY)',
@@ -1951,7 +2378,8 @@ const TILE_SIZE = 16;
 let virtualWidth = 360;
 
 const game = {
-    state: 'START', // START, CUTSCENE, PLAYING, PAUSED, DYING, LEVEL_TRANSITION, GAMEOVER, VICTORY
+    state: 'START', // START, CHAR_SELECT, CUTSCENE, PLAYING, PAUSED, DYING, LEVEL_TRANSITION, GAMEOVER, VICTORY
+    character: getSavedCharacter(), // 'orion' or 'aurora'
     levelIndex: 0,
     gems: 0,
     flowers: 0,
@@ -2105,8 +2533,9 @@ function loadLevel(index, announce = false, isRetry = false) {
         game.levelStartFlowers = game.flowers;
     }
 
-    // Persist furthest/current level progress
     saveProgress(clampedIndex + 1, game.levelStartScore, game.levelStartGems, game.levelStartFlowers);
+    saveCharacterSelection(game.character);
+    syncShieldButtonAppearance();
 
     const lvl = LEVELS[clampedIndex];
     game.tiles = [];
@@ -2340,7 +2769,8 @@ function loadLevel(index, announce = false, isRetry = false) {
         if (isToxicLevel) {
             showLevelBanner('LEVEL 4 - TOXIC AIR!', 'HP REDUCED TO 1! NO FLOWERS!', 2600);
         } else if (clampedIndex === 2) {
-            showLevelBanner(lvl.name, 'FIERY FORCE FIELD UNLOCKED!', 2300);
+            const shieldLabel = game.character === 'aurora' ? 'ICY FORCE FIELD UNLOCKED!' : 'FIERY FORCE FIELD UNLOCKED!';
+            showLevelBanner(lvl.name, shieldLabel, 2300);
         } else {
             showLevelBanner(lvl.name, lvl.subtitle, 2000);
         }
@@ -2388,9 +2818,10 @@ function shootFireball(clientX = null, clientY = null) {
     if (game.state !== 'PLAYING' || isPortrait()) return;
     if (player.fireballCooldown > 0) return;
 
+    const isIce = game.character === 'aurora';
     const originX = player.x + player.w / 2;
     const originY = player.y + player.h * 0.45;
-    const speed = 4.7;
+    const speed = isIce ? 5.1 : 4.7;
     let vx, vy;
 
     if (clientX !== null && clientY !== null) {
@@ -2423,9 +2854,14 @@ function shootFireball(clientX = null, clientY = null) {
     player.castTimer = 12;
     player.fireballCooldown = 15;
 
-    const spawnOffsetX = player.facing === 'right' ? 11 : -11;
+    // Orion casts from his staff tip; Aurora casts from her outstretched hands
+    const spawnOffsetX = isIce
+        ? (player.facing === 'right' ? 9 : -9)
+        : (player.facing === 'right' ? 11 : -11);
+
     game.fireballs.push({
         owner: 'player',
+        magicType: isIce ? 'ice' : 'fire',
         x: originX + spawnOffsetX - 4,
         y: originY - 4,
         w: 8,
@@ -2435,8 +2871,14 @@ function shootFireball(clientX = null, clientY = null) {
         life: 85
     });
 
-    sfx.fireball();
-    spawnParticles(originX + spawnOffsetX, originY, ['#ffcd75', '#ef7d57'], 6, 2.2);
+    sfx.fireball(isIce);
+    spawnParticles(
+        originX + spawnOffsetX,
+        originY,
+        isIce ? ['#f4f4f4', '#73eff7', '#41a6f6'] : ['#ffcd75', '#ef7d57'],
+        6,
+        2.2
+    );
 }
 
 function triggerWizardDeath() {
@@ -2524,7 +2966,6 @@ function update() {
         if (p.life <= 0) game.particles.splice(i, 1);
     }
 
-    // Update drifting toxic spores on Level 4
     if (game.levelIndex === 3) {
         for (const sp of game.toxicSpores) {
             sp.x += sp.vx;
@@ -2535,7 +2976,6 @@ function update() {
         }
     }
 
-    // Update Moving Platforms (Level 2+)
     for (const mp of game.movingPlatforms) {
         const prevX = mp.x;
         const prevY = mp.y;
@@ -2549,7 +2989,6 @@ function update() {
         mp.dy = mp.y - prevY;
     }
 
-    // Update Crumbling Ground Blocks (Level 2+)
     for (const cb of game.crumblingBlocks) {
         if (cb.state === 'shaking') {
             cb.timer--;
@@ -2651,13 +3090,13 @@ function update() {
     if (player.ledgeCooldown > 0) player.ledgeCooldown--;
     if (player.doubleJumpSpinTimer > 0) player.doubleJumpSpinTimer--;
 
-    // Fiery Force Field Shield Logic (Level 3 & Level 4)
+    const isIce = game.character === 'aurora';
     const hasFieryShield = game.levelIndex >= 2;
     const shieldBtnEl = document.getElementById('btn-shield');
     if (hasFieryShield) {
         if (input.shield && !player.shieldOverheated && player.shieldEnergy > 2 && !player.isHanging) {
             if (!player.shieldActive) {
-                sfx.fireShieldActivate();
+                sfx.fireShieldActivate(isIce);
             }
             player.shieldActive = true;
             player.shieldEnergy = Math.max(0, player.shieldEnergy - 0.85);
@@ -2665,7 +3104,7 @@ function update() {
                 spawnParticles(
                     player.x + player.w / 2 + (Math.random() - 0.5) * 18,
                     player.y + player.h / 2 + (Math.random() - 0.5) * 20,
-                    ['#ffcd75', '#ef7d57', '#b13e53'],
+                    isIce ? ['#f4f4f4', '#73eff7', '#41a6f6'] : ['#ffcd75', '#ef7d57', '#b13e53'],
                     1,
                     1.2
                 );
@@ -2695,7 +3134,6 @@ function update() {
         player.jumpBufferTimer--;
     }
 
-    // Ledge Hang & Pull-Up State
     if (player.isHanging) {
         player.vx = 0;
         player.vy = 0;
@@ -2751,7 +3189,13 @@ function update() {
             } else {
                 player.doubleJumpSpinTimer = 18;
                 sfx.doubleJump();
-                spawnParticles(player.x + player.w / 2, player.y + player.h, ['#ffcd75', '#ef7d57', '#ffffff'], 10, 3.0);
+                spawnParticles(
+                    player.x + player.w / 2,
+                    player.y + player.h,
+                    isIce ? ['#f4f4f4', '#73eff7', '#41a6f6'] : ['#ffcd75', '#ef7d57', '#ffffff'],
+                    10,
+                    3.0
+                );
             }
         }
 
@@ -2830,7 +3274,6 @@ function update() {
             }
         }
 
-        // Vertical collision with Moving Platforms
         for (const mp of game.movingPlatforms) {
             if (
                 player.vy >= 0 &&
@@ -2848,7 +3291,6 @@ function update() {
             }
         }
 
-        // Vertical collision with Crumbling Ground Blocks
         for (const cb of game.crumblingBlocks) {
             if (cb.state === 'fallen') continue;
             if (checkAABB(player, cb)) {
@@ -2870,7 +3312,6 @@ function update() {
             }
         }
 
-        // Ledge Grab / Dangle detection
         if (!player.grounded && player.vy > -1.0 && player.ledgeCooldown === 0 && !input.down) {
             for (const tile of game.tiles) {
                 if (tile.type === 'spike') continue;
@@ -2910,15 +3351,22 @@ function update() {
         return;
     }
 
-    // Update Player Fireballs
+    // Update Player Magic Projectiles (Fireballs or Ice Blasts)
     for (let i = game.fireballs.length - 1; i >= 0; i--) {
         const fb = game.fireballs[i];
+        const fbIce = fb.magicType === 'ice';
         fb.x += fb.vx;
         fb.y += fb.vy;
         fb.life--;
 
         if (game.frameCount % 2 === 0) {
-            spawnParticles(fb.x + 4, fb.y + 4, ['#ffcd75', '#ef7d57', '#b13e53'], 1, 1.0);
+            spawnParticles(
+                fb.x + 4,
+                fb.y + 4,
+                fbIce ? ['#f4f4f4', '#73eff7', '#41a6f6'] : ['#ffcd75', '#ef7d57', '#b13e53'],
+                1,
+                1.0
+            );
         }
 
         let exploded = false;
@@ -2928,8 +3376,14 @@ function update() {
                 enemy.alive = false;
                 exploded = true;
                 game.score += 300;
-                sfx.explosion();
-                spawnParticles(enemy.x + enemy.w / 2, enemy.y + enemy.h / 2, ['#ffcd75', '#ef7d57', '#a7f070'], 16, 3.8);
+                sfx.explosion(fbIce);
+                spawnParticles(
+                    enemy.x + enemy.w / 2,
+                    enemy.y + enemy.h / 2,
+                    fbIce ? ['#f4f4f4', '#73eff7', '#41a6f6'] : ['#ffcd75', '#ef7d57', '#a7f070'],
+                    16,
+                    3.8
+                );
                 updateHUD();
                 break;
             }
@@ -2939,8 +3393,14 @@ function update() {
             for (const tile of game.tiles) {
                 if (tile.type !== 'spike' && !tile.oneWay && checkAABB(fb, tile)) {
                     exploded = true;
-                    sfx.explosion();
-                    spawnParticles(fb.x + 4, fb.y + 4, ['#ffcd75', '#ef7d57'], 8, 2.4);
+                    sfx.explosion(fbIce);
+                    spawnParticles(
+                        fb.x + 4,
+                        fb.y + 4,
+                        fbIce ? ['#f4f4f4', '#73eff7', '#41a6f6'] : ['#ffcd75', '#ef7d57'],
+                        8,
+                        2.4
+                    );
                     break;
                 }
             }
@@ -2951,7 +3411,6 @@ function update() {
         }
     }
 
-    // Collectibles
     for (const item of game.collectibles) {
         if (!item.collected && checkAABB(player, item)) {
             item.collected = true;
@@ -2971,7 +3430,6 @@ function update() {
         }
     }
 
-    // Update Goblins & Pterodactyls
     for (const enemy of game.enemies) {
         if (!enemy.alive) continue;
 
@@ -3094,7 +3552,6 @@ function update() {
         }
     }
 
-    // Update Pterodactyl Toxic-Green Projectiles & Fiery Force Field Deflection
     const shieldBox = {
         x: player.x - 6,
         y: player.y - 5,
@@ -3113,10 +3570,16 @@ function update() {
         }
 
         if (player.shieldActive && checkAABB(ep, shieldBox)) {
-            sfx.fireShieldVaporize();
+            sfx.fireShieldVaporize(isIce);
             game.score += 50;
             updateHUD();
-            spawnParticles(ep.x + 4, ep.y + 4, ['#ffcd75', '#ef7d57', '#76ff03'], 14, 3.6);
+            spawnParticles(
+                ep.x + 4,
+                ep.y + 4,
+                isIce ? ['#f4f4f4', '#73eff7', '#41a6f6'] : ['#ffcd75', '#ef7d57', '#76ff03'],
+                14,
+                3.6
+            );
             game.enemyProjectiles.splice(i, 1);
             continue;
         }
@@ -3359,7 +3822,7 @@ function render() {
     ctx.clearRect(0, 0, virtualWidth, VIRTUAL_HEIGHT);
 
     if (game.state === 'CUTSCENE') {
-        const entry = CUTSCENE_LINES[cutsceneState.index];
+        const entry = cutsceneState.lines[cutsceneState.index];
         if (entry && entry.scene === 'kingdom') {
             renderAethelgardPanorama(ctx, virtualWidth, VIRTUAL_HEIGHT, game.frameCount);
         } else {
@@ -3369,6 +3832,7 @@ function render() {
     }
 
     const lvl = LEVELS[game.levelIndex] || LEVELS[0];
+    const isIce = game.character === 'aurora';
 
     drawJungleBackground(lvl);
 
@@ -3388,7 +3852,6 @@ function render() {
         drawTile(tile);
     }
 
-    // Authentic Mossy Jungle-Stone Moving Platforms
     for (const mp of game.movingPlatforms) {
         const mx = Math.round(mp.x);
         const my = Math.round(mp.y);
@@ -3421,7 +3884,6 @@ function render() {
         ctx.fillRect(mx + mp.w - 10, my + mp.h + 3, 2, 2);
     }
 
-    // Crumbling Stone Bridge Blocks
     for (const cb of game.crumblingBlocks) {
         if (cb.state === 'fallen') continue;
         const shakeOffset = cb.state === 'shaking' ? Math.round(Math.sin(game.frameCount * 1.4) * 1.5) : 0;
@@ -3495,23 +3957,24 @@ function render() {
                 ctx.globalAlpha = game.wizardPortalAlpha;
             }
 
-            let animKey = 'wizardIdle';
+            let actionKey = 'idle';
             if (player.isHanging) {
-                animKey = 'wizardHang';
+                actionKey = 'hang';
             } else if (player.castTimer > 0) {
-                animKey = 'wizardCast';
+                actionKey = 'cast';
             } else if (player.doubleJumpSpinTimer > 0) {
-                animKey = 'wizardDoubleJump';
+                actionKey = 'doubleJump';
             } else if (!player.grounded) {
-                animKey = 'wizardJump';
+                actionKey = 'jump';
             } else if (Math.abs(player.vx) > 0.25 || game.state === 'LEVEL_TRANSITION') {
-                animKey = Math.floor(game.frameCount / 7) % 2 === 0 ? 'wizardRun1' : 'wizardRun2';
+                actionKey = Math.floor(game.frameCount / 7) % 2 === 0 ? 'run1' : 'run2';
             }
 
+            const spriteName = getHeroSpriteName(actionKey);
             const dir = player.isHanging ? player.hangSide : player.facing;
-            if (spriteCache[animKey]) {
+            if (spriteCache[spriteName]) {
                 ctx.drawImage(
-                    spriteCache[animKey][dir],
+                    spriteCache[spriteName][dir],
                     Math.round(player.x - 2),
                     Math.round(player.y - 2),
                     20,
@@ -3519,7 +3982,7 @@ function render() {
                 );
             }
 
-            // Fiery Force Field Bubble
+            // Force Field Bubble (Fiery for Orion, Blue/Cyan Icy for Aurora)
             if (player.shieldActive) {
                 const bx = Math.round(player.x - 6);
                 const by = Math.round(player.y - 5);
@@ -3527,11 +3990,17 @@ function render() {
                 const bh = player.h + 10;
                 const flicker = Math.sin(game.frameCount * 0.35) * 0.12 + 0.34;
 
-                ctx.fillStyle = `rgba(239, 125, 87, ${flicker.toFixed(2)})`;
+                ctx.fillStyle = isIce
+                    ? `rgba(115, 239, 247, ${flicker.toFixed(2)})`
+                    : `rgba(239, 125, 87, ${flicker.toFixed(2)})`;
                 ctx.fillRect(bx + 2, by, bw - 4, bh);
                 ctx.fillRect(bx, by + 2, bw, bh - 4);
 
-                ctx.strokeStyle = Math.floor(game.frameCount / 3) % 2 === 0 ? '#ffcd75' : '#ef7d57';
+                if (isIce) {
+                    ctx.strokeStyle = Math.floor(game.frameCount / 3) % 2 === 0 ? '#f4f4f4' : '#73eff7';
+                } else {
+                    ctx.strokeStyle = Math.floor(game.frameCount / 3) % 2 === 0 ? '#ffcd75' : '#ef7d57';
+                }
                 ctx.lineWidth = 1.5;
                 ctx.strokeRect(bx + 1, by + 1, bw - 2, bh - 2);
 
@@ -3540,9 +4009,9 @@ function render() {
                 const fy1 = Math.round(by + bh / 2 + Math.sin(flameAngle) * (bh / 2));
                 const fx2 = Math.round(bx + bw / 2 - Math.cos(flameAngle) * (bw / 2));
                 const fy2 = Math.round(by + bh / 2 - Math.sin(flameAngle) * (bh / 2));
-                ctx.fillStyle = '#ffcd75';
+                ctx.fillStyle = isIce ? '#f4f4f4' : '#ffcd75';
                 ctx.fillRect(fx1 - 1, fy1 - 1, 3, 3);
-                ctx.fillStyle = '#b13e53';
+                ctx.fillStyle = isIce ? '#41a6f6' : '#b13e53';
                 ctx.fillRect(fx2 - 1, fy2 - 1, 3, 3);
             }
 
@@ -3552,7 +4021,7 @@ function render() {
                 const barY = Math.round(player.y - 8);
                 ctx.fillStyle = '#14151f';
                 ctx.fillRect(barX - 1, barY - 1, barW + 2, 4);
-                ctx.fillStyle = player.shieldOverheated ? '#7a1c31' : '#ef7d57';
+                ctx.fillStyle = player.shieldOverheated ? '#7a1c31' : (isIce ? '#73eff7' : '#ef7d57');
                 ctx.fillRect(barX, barY, Math.round((player.shieldEnergy / player.maxShieldEnergy) * barW), 2);
             }
 
@@ -3581,16 +4050,25 @@ function render() {
         ctx.fillRect(ex + 2, ey + 2, 2, 2);
     }
 
-    // Wizard Fireballs
+    // Hero Projectiles (Orion's Fireballs vs Aurora's Ice Blasts)
     for (const fb of game.fireballs) {
         const fx = Math.round(fb.x);
         const fy = Math.round(fb.y);
-        ctx.fillStyle = '#b13e53';
-        ctx.fillRect(fx, fy, 8, 8);
-        ctx.fillStyle = '#ef7d57';
-        ctx.fillRect(fx + 1, fy + 1, 6, 6);
-        ctx.fillStyle = '#ffcd75';
-        ctx.fillRect(fx + 3, fy + 3, 3, 3);
+        if (fb.magicType === 'ice') {
+            ctx.fillStyle = '#2575c4';
+            ctx.fillRect(fx, fy, 8, 8);
+            ctx.fillStyle = '#73eff7';
+            ctx.fillRect(fx + 1, fy + 1, 6, 6);
+            ctx.fillStyle = '#f4f4f4';
+            ctx.fillRect(fx + 2, fy + 2, 4, 4);
+        } else {
+            ctx.fillStyle = '#b13e53';
+            ctx.fillRect(fx, fy, 8, 8);
+            ctx.fillStyle = '#ef7d57';
+            ctx.fillRect(fx + 1, fy + 1, 6, 6);
+            ctx.fillStyle = '#ffcd75';
+            ctx.fillRect(fx + 3, fy + 3, 3, 3);
+        }
     }
 
     for (const p of game.particles) {
@@ -3639,7 +4117,7 @@ function gameLoop(timestamp) {
     requestAnimationFrame(gameLoop);
 }
 
-// --- 8. INPUT HANDLING, PAUSE MENU & LEVEL RESPAWN ---
+// --- 8. INPUT HANDLING, CHARACTER SELECT, PAUSE MENU & LEVEL RESPAWN ---
 function setupControls() {
     const movePadZone = document.getElementById('move-pad-zone');
     const btnLeft = document.getElementById('btn-left');
@@ -3813,6 +4291,7 @@ function setupControls() {
 
     function hideAllOverlays() {
         document.getElementById('start-screen').classList.add('hidden');
+        document.getElementById('char-select-screen').classList.add('hidden');
         document.getElementById('pause-screen').classList.add('hidden');
         document.getElementById('gameover-screen').classList.add('hidden');
         document.getElementById('victory-screen').classList.add('hidden');
@@ -3821,6 +4300,27 @@ function setupControls() {
             csOverlay.classList.add('hidden');
             csOverlay.style.display = 'none';
         }
+    }
+
+    function syncCharSelectCards() {
+        const cardOrion = document.getElementById('card-orion');
+        const cardAurora = document.getElementById('card-aurora');
+        if (!cardOrion || !cardAurora) return;
+        cardOrion.classList.toggle('selected', game.character === 'orion');
+        cardAurora.classList.toggle('selected', game.character === 'aurora');
+    }
+
+    function openCharacterSelect() {
+        sfx.init();
+        sfx.uiChime();
+        clearInputs();
+        game.state = 'CHAR_SELECT';
+        hideAllOverlays();
+        document.getElementById('hud').classList.add('hidden');
+        document.getElementById('touch-controls').classList.add('hidden');
+        paintCharacterSelectCanvases();
+        syncCharSelectCards();
+        document.getElementById('char-select-screen').classList.remove('hidden');
     }
 
     function openPauseMenu() {
@@ -3850,6 +4350,7 @@ function setupControls() {
         if (saveCurrentStage) {
             saveProgress(game.levelIndex + 1, game.levelStartScore, game.levelStartGems, game.levelStartFlowers);
         }
+        saveCharacterSelection(game.character);
         game.state = 'START';
         hideAllOverlays();
         document.getElementById('hud').classList.remove('hidden');
@@ -3886,6 +4387,23 @@ function setupControls() {
     }
 
     window.addEventListener('keydown', (e) => {
+        if (game.state === 'CHAR_SELECT') {
+            if (e.code === 'ArrowLeft' || e.code === 'ArrowRight') {
+                e.preventDefault();
+                game.character = game.character === 'orion' ? 'aurora' : 'orion';
+                saveCharacterSelection(game.character);
+                syncCharSelectCards();
+                sfx.blip('hero');
+            } else if (e.code === 'Enter' || e.code === 'Space') {
+                e.preventDefault();
+                startOpeningCutscene(() => launchAtLevel(0, true, false));
+            } else if (e.code === 'Escape') {
+                e.preventDefault();
+                quitToTitle(false);
+            }
+            return;
+        }
+
         if (game.state === 'CUTSCENE') {
             if (e.code === 'Space' || e.code === 'Enter' || e.key === ' ') {
                 e.preventDefault();
@@ -3964,13 +4482,14 @@ function setupControls() {
         el.addEventListener('click', wrapped);
     }
 
-    // Start Screen Buttons ("ENTER THE JUNGLE" / "NEW GAME" triggers the 2-stage opening cutscene)
+    // Start Screen Buttons ("ENTER THE JUNGLE" / "NEW GAME" opens character selection before cutscene)
     bindDebouncedBtn(document.getElementById('start-btn'), () => {
-        startOpeningCutscene(() => launchAtLevel(0, true, false));
+        openCharacterSelect();
     });
 
     bindDebouncedBtn(document.getElementById('continue-btn'), () => {
         const saved = getSavedProgress();
+        game.character = getSavedCharacter();
         game.gems = saved.gems;
         game.flowers = saved.flowers;
         game.score = saved.score;
@@ -3978,6 +4497,30 @@ function setupControls() {
         game.levelStartFlowers = saved.flowers;
         game.levelStartScore = saved.score;
         launchAtLevel(saved.level - 1, false, false);
+    });
+
+    // Character Selection Controls
+    bindDebouncedBtn(document.getElementById('card-orion'), () => {
+        game.character = 'orion';
+        saveCharacterSelection('orion');
+        syncCharSelectCards();
+        sfx.blip('hero');
+    });
+
+    bindDebouncedBtn(document.getElementById('card-aurora'), () => {
+        game.character = 'aurora';
+        saveCharacterSelection('aurora');
+        syncCharSelectCards();
+        sfx.blip('hero');
+    });
+
+    bindDebouncedBtn(document.getElementById('confirm-hero-btn'), () => {
+        saveCharacterSelection(game.character);
+        startOpeningCutscene(() => launchAtLevel(0, true, false));
+    });
+
+    bindDebouncedBtn(document.getElementById('back-to-title-btn'), () => {
+        quitToTitle(false);
     });
 
     // Cutscene Tap & Skip Controls
@@ -4020,7 +4563,7 @@ function setupControls() {
 
     // Victory Play Again Button
     bindDebouncedBtn(document.getElementById('playagain-btn'), () => {
-        launchAtLevel(0, true, false);
+        openCharacterSelect();
     });
 
     // Sound Mute Toggle
@@ -4037,8 +4580,10 @@ function setupControls() {
 function initGame() {
     if (loopRunning) return;
     loopRunning = true;
+    game.character = getSavedCharacter();
     preRenderSprites();
-    paintPortraitCanvases();
+    paintCharacterSelectCanvases();
+    paintPortraitCanvases(game.character);
     resizeCanvas();
     setupControls();
     refreshStartScreenButtons();
