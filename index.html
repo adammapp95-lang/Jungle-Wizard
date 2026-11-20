@@ -1088,6 +1088,9 @@ class SoundFX {
         this.ctx = null;
         this.muted = false;
         this.unlocked = false;
+        this.bgmTimer = null;
+        this.bgmStep = 0;
+        this.ambienceTimer = null;
     }
 
     init() {
@@ -1098,7 +1101,7 @@ class SoundFX {
                     this.ctx = new AudioCtx();
                 }
             }
-            if (this.ctx && this.ctx.state === 'suspended') {
+            if (this.ctx && this.ctx.state !== 'running') {
                 const p = this.ctx.resume();
                 if (p && typeof p.catch === 'function') {
                     p.catch(() => {});
@@ -1112,8 +1115,11 @@ class SoundFX {
                 if (typeof src.start === 'function') {
                     src.start(0);
                 }
-                this.unlocked = true;
+                if (this.ctx.state === 'running') {
+                    this.unlocked = true;
+                }
             }
+            this.startBgmLoop();
         } catch (e) {}
     }
 
@@ -1126,12 +1132,93 @@ class SoundFX {
     canPlay() {
         if (this.muted) return false;
         this.init();
-        return !!(this.ctx && this.ctx.state === 'running');
+        return !!(this.ctx && this.ctx.state !== 'closed');
+    }
+
+    startBgmLoop() {
+        if (this.bgmTimer) return;
+        // Mysterious, dark, adventurous minor-key jungle theme (D Dorian / D Minor)
+        const melody = [
+            293.66, 0, 349.23, 440.00, 415.30, 0, 349.23, 329.63,
+            293.66, 0, 261.63, 293.66, 349.23, 0, 0, 0,
+            440.00, 0, 466.16, 440.00, 349.23, 0, 329.63, 293.66,
+            261.63, 0, 220.00, 261.63, 293.66, 0, 0, 0
+        ];
+        const bass = [
+            146.83, 0, 0, 146.83, 130.81, 0, 146.83, 0,
+            116.54, 0, 0, 116.54, 110.00, 0, 130.81, 0,
+            146.83, 0, 0, 146.83, 174.61, 0, 164.81, 0,
+            116.54, 0, 110.00, 0, 146.83, 0, 0, 0
+        ];
+
+        this.bgmTimer = setInterval(() => {
+            if (this.muted || !this.ctx || this.ctx.state !== 'running') return;
+            if (typeof game !== 'undefined' && game.state === 'CUTSCENE') return;
+
+            const idx = this.bgmStep % melody.length;
+            const mNote = melody[idx];
+            const bNote = bass[idx];
+
+            if (mNote > 0) {
+                this.playTone(mNote, mNote * 0.996, 0.19, 'triangle', 0.032, 0);
+            }
+            if (bNote > 0) {
+                this.playTone(bNote, bNote * 0.985, 0.22, 'sine', 0.038, 0);
+            }
+            if (idx % 4 === 2) {
+                this.playNoise(0.04, 1400, 'bandpass', 0.012, 0);
+            }
+            this.bgmStep++;
+        }, 225);
+    }
+
+    startNightAmbience() {
+        this.stopNightAmbience();
+        this.playNightWindAndCrickets();
+        this.ambienceTimer = setInterval(() => {
+            if (this.muted || !this.ctx || this.ctx.state !== 'running') return;
+            if (typeof game === 'undefined' || game.state !== 'CUTSCENE') {
+                this.stopNightAmbience();
+                return;
+            }
+            this.playNightWindAndCrickets();
+        }, 1750);
+    }
+
+    stopNightAmbience() {
+        if (this.ambienceTimer) {
+            clearInterval(this.ambienceTimer);
+            this.ambienceTimer = null;
+        }
+    }
+
+    playNightWindAndCrickets() {
+        if (!this.canPlay()) return;
+        // Soft nocturnal breeze sweeping across Aethelgard
+        this.playNoise(1.55, 320, 'bandpass', 0.045, 0);
+        this.playNoise(1.2, 520, 'lowpass', 0.035, 0.25);
+
+        // Original crisp cricket chirp sound in 6 randomized sequences of 2-5 chirps (no pitch variation)
+        const patterns = [
+            [0.14, 0.24],
+            [0.18, 0.28, 0.38, 0.48],
+            [0.08, 0.17, 0.72, 0.81, 0.90],
+            [0.35, 0.45, 1.15],
+            [0.14, 0.23, 0.32, 0.98, 1.08],
+            [0.52, 0.61, 0.70, 0.79]
+        ];
+        const chosen = patterns[Math.floor(Math.random() * patterns.length)];
+        chosen.forEach((off) => {
+            this.playTone(4186, 4320, 0.045, 'sine', 0.022, off);
+        });
     }
 
     playTone(freqStart, freqEnd, duration, type = 'square', volume = 0.14, delay = 0) {
         if (!this.canPlay()) return;
         try {
+            if (this.ctx.state === 'suspended') {
+                this.ctx.resume().catch(() => {});
+            }
             const now = this.ctx.currentTime + delay;
             const osc = this.ctx.createOscillator();
             const gain = this.ctx.createGain();
@@ -1157,6 +1244,9 @@ class SoundFX {
     playNoise(duration, filterFreq, filterType = 'bandpass', volume = 0.12, delay = 0) {
         if (!this.canPlay()) return;
         try {
+            if (this.ctx.state === 'suspended') {
+                this.ctx.resume().catch(() => {});
+            }
             const now = this.ctx.currentTime + delay;
             const sampleRate = this.ctx.sampleRate || 44100;
             const length = Math.max(1, Math.floor(sampleRate * duration));
@@ -1193,14 +1283,24 @@ class SoundFX {
     }
 
     blip(who) {
-        if (who === 'king') this.playTone(190 + Math.random() * 22, 175, 0.035, 'triangle', 0.06);
-        else if (who === 'moosimus') this.playTone(155 + Math.random() * 18, 140, 0.04, 'triangle', 0.065);
-        else if (who === 'hero' && (typeof game === 'undefined' || game.character === 'aurora')) {
-            this.playTone(520 + Math.random() * 45, 640, 0.035, 'triangle', 0.05);
+        // Royal Chronicle narrator uses silent text with night wind & crickets
+        if (who === 'narrator') return;
+
+        // Natural cadence variations so dialogue sounds like spoken syllables
+        const pitchMod = 0.9 + Math.random() * 0.22;
+        const dur = 0.048 + Math.random() * 0.025;
+
+        if (who === 'king') {
+            this.playTone(185 * pitchMod, 168 * pitchMod, dur, 'triangle', 0.065);
+        } else if (who === 'moosimus') {
+            this.playTone(165 * pitchMod, 148 * pitchMod, dur + 0.014, 'triangle', 0.28);
+            this.playTone(330 * pitchMod, 296 * pitchMod, dur, 'triangle', 0.18);
+            this.playTone(495 * pitchMod, 444 * pitchMod, dur * 0.85, 'sine', 0.09);
+        } else if (who === 'hero' && (typeof game === 'undefined' || game.character === 'aurora')) {
+            this.playTone(510 * pitchMod, 620 * pitchMod, dur, 'triangle', 0.055);
         } else if (who === 'hero') {
-            this.playTone(300 + Math.random() * 28, 285, 0.035, 'square', 0.045);
-        } else {
-            this.playTone(245 + Math.random() * 20, 235, 0.035, 'sine', 0.045);
+            // Warm, natural young hero baritone voice for Orion
+            this.playTone(235 * pitchMod, 205 * pitchMod, dur, 'triangle', 0.068);
         }
     }
 
@@ -1228,8 +1328,11 @@ class SoundFX {
             this.playTone(1180, 520, 0.16, 'sine', 0.13);
             this.playTone(1620, 880, 0.11, 'triangle', 0.08, 0.03);
         } else {
-            this.playNoise(0.16, 950, 'bandpass', 0.14);
-            this.playTone(720, 170, 0.19, 'sawtooth', 0.14);
+            // Warm roaring flame whoosh & ember burst (no harsh square/sawtooth scratch)
+            this.playNoise(0.22, 460, 'lowpass', 0.19, 0);
+            this.playNoise(0.16, 980, 'bandpass', 0.12, 0.02);
+            this.playTone(260, 95, 0.2, 'triangle', 0.14, 0);
+            this.playTone(380, 140, 0.14, 'sine', 0.1, 0.02);
         }
     }
 
@@ -1238,8 +1341,10 @@ class SoundFX {
             this.playNoise(0.2, 2100, 'bandpass', 0.16);
             this.playTone(1420, 420, 0.18, 'triangle', 0.14);
         } else {
-            this.playNoise(0.24, 340, 'lowpass', 0.2);
-            this.playTone(170, 38, 0.24, 'sawtooth', 0.16);
+            // Deep warm fire detonation
+            this.playNoise(0.26, 280, 'lowpass', 0.22, 0);
+            this.playNoise(0.18, 650, 'bandpass', 0.11, 0.03);
+            this.playTone(145, 36, 0.25, 'triangle', 0.17, 0);
         }
     }
 
@@ -1293,26 +1398,37 @@ class SoundFX {
 
     goblinRamble(volumeScale = 1) {
         if (!this.canPlay()) return;
-        const v = Math.min(0.14, 0.12 * volumeScale);
-        const syllables = 3 + Math.floor(Math.random() * 2);
-        for (let i = 0; i < syllables; i++) {
-            const base = 135 + Math.random() * 95;
-            const end = base + (Math.random() - 0.5) * 80;
-            this.playTone(base, end, 0.075, 'sawtooth', v, i * 0.085);
+        const v = Math.min(0.24, 0.19 * volumeScale);
+        // Low guttural boar/animal snort & grunt (deep chest thud + nasal snort burst)
+        const grunts = 1 + Math.floor(Math.random() * 2);
+        for (let i = 0; i < grunts; i++) {
+            const delay = i * 0.16;
+            const base = 78 + Math.random() * 18;
+            this.playTone(base, base * 0.68, 0.12, 'triangle', v * 1.15, delay);
+            this.playTone(base * 1.5, base * 0.9, 0.09, 'sawtooth', v * 0.42, delay + 0.01);
+            this.playNoise(0.08, 260 + Math.random() * 70, 'lowpass', v * 1.25, delay + 0.015);
         }
     }
 
     pteroFlap(volumeScale = 1) {
         if (!this.canPlay()) return;
-        const v = Math.min(0.14, 0.11 * volumeScale);
-        this.playNoise(0.14, 290, 'lowpass', v);
+        const v = Math.min(0.2, 0.16 * volumeScale);
+        // Smooth, sweeping air-whoosh modeled on Orion's fire magic (warm lowpass sweep + soft triangle glide, no percussive transient)
+        this.playNoise(0.26, 390, 'lowpass', v * 1.2, 0);
+        this.playNoise(0.20, 740, 'bandpass', v * 0.65, 0.02);
+        this.playTone(215, 82, 0.24, 'triangle', v * 0.85, 0);
+        this.playTone(295, 110, 0.18, 'sine', v * 0.6, 0.02);
     }
 
     pteroChirp(volumeScale = 1) {
         if (!this.canPlay()) return;
-        const v = Math.min(0.14, 0.11 * volumeScale);
-        this.playTone(1250, 1850, 0.08, 'sawtooth', v, 0);
-        this.playTone(1750, 920, 0.13, 'sawtooth', v, 0.07);
+        const v = Math.min(0.26, 0.22 * volumeScale);
+        // Deep, menacing dinosaur roar (sub-bass chest growl + roaring formant sweep + throaty rumble)
+        this.playTone(112, 42, 0.56, 'sawtooth', v * 0.9, 0);
+        this.playTone(76, 34, 0.6, 'triangle', v * 1.3, 0.02);
+        this.playTone(158, 56, 0.46, 'sawtooth', v * 0.55, 0.04);
+        this.playNoise(0.52, 220, 'lowpass', v * 1.25, 0.01);
+        this.playNoise(0.42, 410, 'bandpass', v * 0.75, 0.05);
     }
 
     pteroSpit(volumeScale = 1) {
@@ -1324,25 +1440,27 @@ class SoundFX {
 
     fireShieldActivate(isIce = false) {
         if (isIce) {
-            this.playNoise(0.18, 2200, 'highpass', 0.12);
-            this.playTone(620, 1280, 0.18, 'sine', 0.12, 0);
-            this.playTone(920, 1560, 0.15, 'triangle', 0.1, 0.04);
+            // Shimmering crystalline frost aura
+            this.playNoise(0.24, 2400, 'bandpass', 0.11, 0);
+            this.playTone(880, 1320, 0.22, 'sine', 0.11, 0);
+            this.playTone(1318.5, 1760, 0.18, 'triangle', 0.08, 0.05);
         } else {
-            this.playNoise(0.22, 680, 'bandpass', 0.16);
-            this.playTone(190, 440, 0.18, 'sawtooth', 0.14, 0);
-            this.playTone(320, 640, 0.16, 'triangle', 0.11, 0.04);
+            // Organic hearth-fire aura ignition
+            this.playNoise(0.26, 420, 'lowpass', 0.18, 0);
+            this.playNoise(0.18, 1150, 'bandpass', 0.1, 0.03);
+            this.playTone(180, 110, 0.22, 'triangle', 0.13, 0);
         }
     }
 
     fireShieldVaporize(isIce = false) {
         if (isIce) {
-            this.playNoise(0.16, 2600, 'bandpass', 0.15);
-            this.playTone(1240, 1780, 0.12, 'sine', 0.13);
-            this.playTone(1580, 980, 0.1, 'triangle', 0.1, 0.04);
+            this.playNoise(0.18, 2200, 'bandpass', 0.14);
+            this.playTone(1174.66, 1567.98, 0.14, 'sine', 0.12);
+            this.playTone(1760, 1046.5, 0.12, 'triangle', 0.09, 0.04);
         } else {
-            this.playNoise(0.18, 1200, 'bandpass', 0.18);
-            this.playTone(580, 1120, 0.12, 'sawtooth', 0.15, 0);
-            this.playTone(880, 1480, 0.11, 'sine', 0.13, 0.04);
+            this.playNoise(0.2, 540, 'lowpass', 0.18, 0);
+            this.playNoise(0.15, 1250, 'bandpass', 0.12, 0.02);
+            this.playTone(320, 140, 0.16, 'triangle', 0.13, 0);
         }
     }
 
@@ -1352,8 +1470,12 @@ class SoundFX {
     }
 
     crumbleBreak() {
-        this.playNoise(0.22, 180, 'lowpass', 0.18);
-        this.playTone(130, 42, 0.22, 'sawtooth', 0.15);
+        // Cascading crumbling stones & pebbles
+        const pebbles = [0, 0.04, 0.09, 0.15, 0.21];
+        pebbles.forEach((d, idx) => {
+            this.playNoise(0.08, 320 + idx * 95, 'bandpass', 0.14 - idx * 0.015, d);
+            this.playTone(165 - idx * 18, 58, 0.07, 'triangle', 0.11 - idx * 0.012, d);
+        });
     }
 
     toxicHiss() {
@@ -1383,10 +1505,12 @@ const PALETTE = {
     'O': '#ef7d57',   // Ember Orange (Fireball & hat band)
     'Y': '#ffcd75',   // Bright Gold / Glowing Eyes / Staff Ember
     'W': '#f4f4f4',   // Pure White Sparkle & Skeleton Bone
-    'N': '#cbd6e2',   // Bone Shadow
+    'N': '#cbd6e2',   // Bone Shadow / Silver Armor
+    'H': '#7c8ea6',   // Steel Armor Shadow
     'B': '#7a444a',   // Wooden Staff Bark
     'G': '#38b764',   // Goblin / Jungle Green
     'L': '#a7f070',   // Lime Highlight
+    'F': '#00e676',   // Toxic Neon Vein Green
     'T': '#257179',   // Deep Jungle Teal
     'P': '#5d275d',   // Pterodactyl Plum
     'M': '#8b4166',   // Pterodactyl Wing Mauve
@@ -1401,10 +1525,8 @@ const PALETTE = {
     'J': '#c79216',   // Rich Blonde Hair Shadow
     'U': '#2b7de9',   // Royal Blue Robe
     'Q': '#5cb8ff',   // Sky Blue Robe Highlight
-    'F': '#00e676',   // Corrupted Toxic Green Vein Core
-    'H': '#5c341d',   // Deep Dark Brown Skin (Sir Moosimus)
-    '8': '#3d2010',   // Dark Brown Skin Shadow
-    '9': '#94b0c2'    // Steel Armor Midtone
+    '1': '#6e4228',   // Sir Moosimus Rich Dark Brown Skin
+    '2': '#4a2916'    // Sir Moosimus Skin Shadow
 };
 
 // Cutscene Portrait Palette
@@ -1424,10 +1546,11 @@ const PORTRAIT_PAL = {
     'F': '#f4c095', // Fair skin
     'S': '#d99b72', // Skin shadow
     'E': '#6a2c91', // Royal purple velvet
-    'H': '#e2e8f0', // Silver-white beard / hair / armor
-    'M': '#6b3e26', // Deep rich brown skin (Sir Moosimus)
-    'N': '#4a2816', // Dark brown skin shadow
-    'A': '#94a3b8'  // Knight steel armor shadow
+    'H': '#e2e8f0', // Silver-white beard / hair
+    'N': '#cbd5e1', // Silver armor plate
+    'G': '#64748b', // Steel armor shadow
+    '1': '#6e4228', // Sir Moosimus Rich Dark Brown Skin
+    '2': '#4a2916'  // Sir Moosimus Skin Shadow
 };
 
 const PORTRAITS = {
@@ -1459,28 +1582,28 @@ const PORTRAITS = {
     ],
     moosimus: [
         ".......KKKKKKKKKK.......",
-        "......KHHHHHHHHHHK......",
-        ".....KHHYYYYYYYYHHK.....",
-        "....KHHAAAAAAAAAAGHK....",
-        "....KHKKKKKKKKKKKKHK....",
-        "....KHKMMMMMMMMMMKHK....",
-        "....KHKMMKKMMKKMMKHK....",
-        "....KHKMMKWMMKWMMKHK....",
-        "....KHKMMMMMMMMMMKHK....",
-        "....KHKMMNNNNNNMMKHK....",
-        "....KHKMMMWWWWMMMKHK....",
-        ".....KKMMMMMMMMMMKK.....",
-        "......KKMMMMMMMMKK......",
-        "....KKKHHHHHHHHHHKKK....",
-        "..KKHHHHYYYYYYYYHHHHKK..",
-        ".KHHHHHAAYYYYYYAAHHHHHK.",
-        "KHHHHHAAAAYYYYAAAAHHHHHK",
-        "KHHHHHAAAAAAAAAAAAHHHHHK",
-        "KHHHHHYYYYYYYYYYYYHHHHHK",
-        "KHHHHHAAAAAAAAAAAAHHHHHK",
-        "KHHHHHAAAAAAAAAAAAHHHHHK",
-        "KHHHHHAAAAAAAAAAAAHHHHHK",
-        "KHHHHHAAAAAAAAAAAAHHHHHK",
+        "......K1111111111K......",
+        ".....K111111111111K.....",
+        ".....K111111111111K.....",
+        "....K11111111111111K....",
+        "....K11KK111111KK11K....",
+        "....K11KW111111WK11K....",
+        "....K11111122111111K....",
+        "....K11111111111111K....",
+        ".....K1111KKKK1111K.....",
+        ".....K211111111112K.....",
+        "......K2211111122K......",
+        ".......KKKKKKKKKK.......",
+        "....KKKNNNNNNNNNNKKK....",
+        "..KKNNNNNYYYYYYNNNNNKK..",
+        ".KGGNNNNNYYYYYYNNNNNGGK.",
+        "KGGGNNNNNNNNNNNNNNNNGGGK",
+        "KGGNNNNNWWNNNNWWNNNNNGGK",
+        "KGGNNNNNNNNNNNNNNNNNNGGK",
+        "KGGGNNNNNNYYYYNNNNNNGGGK",
+        ".KGGNNNNNNNNNNNNNNNNGGK.",
+        "..KGGNNNNNNNNNNNNNNGGK..",
+        "..KGGGNNNNNNNNNNNNGGGK..",
         "KKKKKKKKKKKKKKKKKKKKKKKK"
     ],
     orion: [
@@ -1704,7 +1827,6 @@ const SPRITES = {
         '...KK..KK.....',
         '....K..K......'
     ],
-    // Aurora (Elven Enchantress: fair skin, pointed ears, long golden-blonde hair, blue robe & white trims)
     auroraIdle: [
         '.....DDDD.....',
         '....DDDDDD....',
@@ -1831,6 +1953,61 @@ const SPRITES = {
         '.....W..W.....',
         '..............'
     ],
+    // Sir Moosimus (Black Knight in Silver Plate Armor)
+    sirMoosimus: [
+        '....KKKKKK....',
+        '...K111111K...',
+        '...K1K11K1K...',
+        '...K111111K...',
+        '....K2112K....',
+        '..KKNNNNNNKK..',
+        '.KHNNYYYYNNHK.',
+        '.KHNNNNNNNNHK.',
+        'KH.NNNNNNNN.HK',
+        'KH.NNYYYYNN.HK',
+        '...NNNNNNNN...',
+        '...HHHHHHHH...',
+        '...NN....NN...',
+        '...HH....HH...',
+        '..KKN....NKK..',
+        '..............'
+    ],
+    sirMoosimusRun1: [
+        '....KKKKKK....',
+        '...K111111K...',
+        '...K1K11K1K...',
+        '...K111111K...',
+        '....K2112K....',
+        '..KKNNNNNNKK..',
+        '.KHNNYYYYNNHK.',
+        '.KHNNNNNNNNHK.',
+        '..HNNNNNNNNH..',
+        '...NNYYYYNN...',
+        '...HHHHHHHH...',
+        '..NN......NN..',
+        '.HH........HH.',
+        'KKN........NKK',
+        '..............',
+        '..............'
+    ],
+    sirMoosimusRun2: [
+        '....KKKKKK....',
+        '...K111111K...',
+        '...K1K11K1K...',
+        '...K111111K...',
+        '....K2112K....',
+        '..KKNNNNNNKK..',
+        '.KHNNYYYYNNHK.',
+        '.KHNNNNNNNNHK.',
+        '..HNNNNNNNNH..',
+        '...NNYYYYNN...',
+        '...HHHHHHHH...',
+        '....NN..NN....',
+        '....HH..HH....',
+        '...KKN..NKK...',
+        '..............',
+        '..............'
+    ],
     wizardSkeleton: [
         '..............',
         '....WWWWWW....',
@@ -1877,113 +2054,38 @@ const SPRITES = {
         '...GG..GG.....',
         '..............'
     ],
-    // Goblin Chieftain Mini-Boss (Horned bone crown, crimson war-paint & cape, heavy spear)
+    // Goblin Chieftain Mini-Boss (Horned Skull Crown, Crimson Cape, War-Paint & Broad Spear)
     chieftain1: [
-        '.W..YYYY..W..N',
-        'WW.YYYYYY.WW.N',
-        '.GGGGGGGGGG..B',
-        '.GRGKGKGKRG..B',
-        '.GGGGGGGGGG..B',
-        '..GGKKKKGG..GB',
-        'RGGGGGGGGGGGGB',
-        'RRGGGGGGGGGG.B',
-        'R.RRRRRRRRRR.B',
-        'R.RYYYYYYYYR.B',
-        '..RRRRRRRRRR..',
-        '..GGG....GGG..',
-        '.GGGG....GGGG.'
+        '.W...YYYY...W.Y.',
+        'WW..YYYYYY..WWB.',
+        '.GGGGGGGGGGGG.B.',
+        'GGGGGGGGGGGGGGW.',
+        '.GGRGKGKGKGRG.B.',
+        '.GGGGGGGGGGGG.B.',
+        '..GGKKKKKKGG.GB.',
+        'RRGGGGGGGGGGGGB.',
+        'RR.GGGGGGGGGG.B.',
+        'RR.YYYYYYYYYY.B.',
+        'R..RRRRRRRRRR...',
+        '...RRRRRRRRRR...',
+        '...GG......GG...',
+        '..GGG......GGG..'
     ],
     chieftain2: [
-        '.W..YYYY..W...',
-        'WW.YYYYYY.WW.N',
-        '.GGGGGGGGGG..N',
-        '.GRGKGKGKRG..B',
-        '.GGGGGGGGGG..B',
-        '..GGKKKKGG..GB',
-        'RGGGGGGGGGGGGB',
-        'RRGGGGGGGGGG.B',
-        'R.RRRRRRRRRR.B',
-        'R.RYYYYYYYYR.B',
-        '..RRRRRRRRRR..',
-        '...GGG..GGG...',
-        '...GGG..GGG...'
-    ],
-    chieftainSkeleton: [
-        '.W..YYYY..W...',
-        'WW.WWWWWW.WW..',
-        '..WWWWWWWW....',
-        '..WWKWWKWW....',
-        '..WWWWWWWW....',
-        '...WWKKWW.....',
-        '....NNNN......',
-        '..WWWWWWWW....',
-        '.W.WWWWWW.W...',
-        '.W..NNNN..W...',
-        '...WW..WW.....',
-        '..WWW..WWW....',
-        '..............'
-    ],
-    // Sir Moosimus (Dark-skinned knight in gleaming silver & gold plate armor)
-    sirMoosimus: [
-        '....WWWWWW....',
-        '...WWYYYYWW...',
-        '..WW999999WW..',
-        '..WKKKKKKKKW..',
-        '..WKHHHHHHKW..',
-        '..WKHWHWHWKW..',
-        '..WKHHHHHHKW..',
-        '...W888888W...',
-        '.WWWWYYYYWWWW.',
-        'WW999YYYY999WW',
-        'W999999999999W',
-        'W999YYYYYY999W',
-        '.W9999999999W.',
-        '..9999..9999..',
-        '.WWWW....WWWW.',
-        '..............'
-    ],
-    sirMoosimusRun1: [
-        '....WWWWWW....',
-        '...WWYYYYWW...',
-        '..WW999999WW..',
-        '..WKKKKKKKKW..',
-        '..WKHHHHHHKW..',
-        '..WKHWHWHWKW..',
-        '..WKHHHHHHKW..',
-        '...W888888W...',
-        '.WWWWYYYYWWWW.',
-        'WW999YYYY999WW',
-        'W999999999999W',
-        '.W9999999999W.',
-        '.9999....9999.',
-        'WWWW......WWWW',
-        '..............',
-        '..............'
-    ],
-    sirMoosimusRun2: [
-        '....WWWWWW....',
-        '...WWYYYYWW...',
-        '..WW999999WW..',
-        '..WKKKKKKKKW..',
-        '..WKHHHHHHKW..',
-        '..WKHWHWHWKW..',
-        '..WKHHHHHHKW..',
-        '...W888888W...',
-        '.WWWWYYYYWWWW.',
-        'WW999YYYY999WW',
-        'W999999999999W',
-        '.W9999999999W.',
-        '...999..999...',
-        '...WWW..WWW...',
-        '..............',
-        '..............'
-    ],
-    rustyKey: [
-        '.YYY........',
-        'Y...Y.......',
-        'Y.Y.YYYYYYYY',
-        'Y...Y.....Y.',
-        '.YYY.....YY.'
+        '.W...YYYY...W...',
+        'WW..YYYYYY..WWY.',
+        '.GGGGGGGGGGGG.B.',
+        'GGGGGGGGGGGGGGW.',
+        '.GGRGKGKGKGRG.B.',
+        '.GGGGGGGGGGGG.B.',
+        '..GGKKKKKKGG.GB.',
+        'RRGGGGGGGGGGGGB.',
+        'RR.GGGGGGGGGG.B.',
+        'RR.YYYYYYYYYY.B.',
+        'R..RRRRRRRRRR...',
+        '....GG....GG....',
+        '....GG....GG....',
+        '................'
     ],
     ptero1: [
         '.....MM.........',
@@ -2009,16 +2111,15 @@ const SPRITES = {
         '.....MM.........',
         '................'
     ],
-    // Corrupted Toxic-Veined Pterodactyls (Levels 3 & 4)
     pteroToxic1: [
         '.....MM.........',
-        '....MFLM........',
-        '...MMFMMMM..PP..',
-        '..MMFLFMMMFPPPP.',
-        '.MMFMMMFLMPPPFPO',
+        '....MFMM........',
+        '...MMFFMMM..PP..',
+        '..MMFMMFMM.PPFP.',
+        '.MMFMMMMFMPPPFPO',
         'MMFMMMMMMMPPPFP.',
-        '.MMFLMM...PPPP..',
-        '..MMMM..........',
+        '.MMFFMM...PPPP..',
+        '..MMFM..........',
         '...MM...........',
         '................'
     ],
@@ -2026,11 +2127,11 @@ const SPRITES = {
         '................',
         '................',
         '............PP..',
-        '...........PPPP.',
-        '.MMFLMMMMMPPPFPO',
-        '..MMFMMFLMPPPFP.',
-        '...MMFMMM.PPPP..',
-        '....MFLM........',
+        '...........PPFP.',
+        '.MMFFMMMMPPPPFPO',
+        '..MMFMMFMPPPPFP.',
+        '...MMFFMM.PPPP..',
+        '....MFMM........',
         '.....MM.........',
         '................'
     ],
@@ -2078,6 +2179,18 @@ const SPRITES = {
         '..GGGLLGGG..',
         '...GGLLGG...',
         '.....LL.....'
+    ],
+    rustyKey: [
+        '...YYYY...',
+        '..YOOOOY..',
+        '.YO....OY.',
+        '.YO....OY.',
+        '..YOOOOY..',
+        '...YYYY...',
+        '....YO....',
+        '....YOYY..',
+        '....YO....',
+        '....YOYY..'
     ],
     spike: [
         '....Z..Z....',
@@ -2151,18 +2264,33 @@ function syncShieldButtonAppearance() {
     const shieldBtn = document.getElementById('btn-shield');
     const fireIcon = document.getElementById('shield-icon-fire');
     const iceIcon = document.getElementById('shield-icon-ice');
-    const isAurora = game.character === 'aurora';
+    if (!shieldBtn) return;
 
-    if (shieldBtn) {
-        shieldBtn.classList.toggle('ice-mode', isAurora);
-    }
-    if (fireIcon && iceIcon) {
-        fireIcon.classList.toggle('hidden', isAurora);
-        iceIcon.classList.toggle('hidden', !isAurora);
+    const isIce = game.character === 'aurora';
+    shieldBtn.classList.toggle('ice-mode', isIce);
+    if (fireIcon) fireIcon.classList.toggle('hidden', isIce);
+    if (iceIcon) iceIcon.classList.toggle('hidden', !isIce);
+}
+
+function syncKeyButtonAppearance() {
+    const keyBtn = document.getElementById('btn-key');
+    if (!keyBtn) return;
+
+    const hasKey = game.levelIndex === 2 && game.hasCageKey && !game.cageUnlocked;
+    keyBtn.classList.toggle('hidden', !hasKey);
+
+    if (hasKey && game.cage) {
+        const nearCage = Math.hypot(
+            (player.x + player.w / 2) - (game.cage.x + game.cage.w / 2),
+            (player.y + player.h / 2) - (game.cage.y + game.cage.h / 2)
+        ) <= 34;
+        keyBtn.classList.toggle('ready', nearCage);
+    } else {
+        keyBtn.classList.remove('ready');
     }
 }
 
-// --- 2B. CUTSCENE DIALOGUE BUILDERS (OPENING & LEVEL 3 SIR MOOSIMUS QUEST) ---
+// --- 2B. OPENING & IN-LEVEL CUTSCENES WITH DYNAMIC CHARACTER DIALOGUE ---
 function buildCutsceneLines(charId) {
     const isAurora = charId === 'aurora';
     const heroName = isAurora ? 'Aurora' : 'Orion';
@@ -2180,7 +2308,6 @@ function buildCutsceneLines(charId) {
             scene: 'throne',
             location: 'ROYAL COURT OF AETHELGARD',
             speaker: 'king',
-            leftPortrait: 'king',
             tag: 'KING NORMAN II',
             text: `Ah, ${heroName}! Thank the stars you have answered my call. Evil forces have breached our borders and kidnapped my daughter, Princess Nova, dragging her deep into the perilous Veridian Abyss!`
         },
@@ -2188,7 +2315,6 @@ function buildCutsceneLines(charId) {
             scene: 'throne',
             location: 'ROYAL COURT OF AETHELGARD',
             speaker: 'king',
-            leftPortrait: 'king',
             tag: 'KING NORMAN II',
             text: 'I have already sent my greatest knight, Sir Moosimus, to find Nova, but he has not returned. Keep an eye out for him in the wilds and help him return if you can.'
         },
@@ -2205,7 +2331,6 @@ function buildCutsceneLines(charId) {
             scene: 'throne',
             location: 'ROYAL COURT OF AETHELGARD',
             speaker: 'king',
-            leftPortrait: 'king',
             tag: 'KING NORMAN II',
             text: isAurora
                 ? `Brave enchantress... Should you succeed, the kingdom of Aethelgard and its throne will be forever in your debt. May your ice magic guide your steps, ${heroName}!`
@@ -2214,88 +2339,80 @@ function buildCutsceneLines(charId) {
     ];
 }
 
-function buildCageApproachLines(charId) {
+function buildCageIntroLines(charId) {
     const isAurora = charId === 'aurora';
     const heroName = isAurora ? 'Aurora' : 'Orion';
     const heroTag = isAurora ? 'AURORA' : 'ORION';
 
     return [
         {
-            scene: 'jungle',
+            scene: 'ingame',
             location: 'SCORCHED GORGE - RUSTED CAGE',
             speaker: 'moosimus',
-            leftPortrait: 'moosimus',
             tag: 'SIR MOOSIMUS',
-            text: `${heroName}! By the light of Aethelgard, am I glad to see you! A raiding party of goblins ambushed me in the gorge and locked me inside this rusted iron cage!`
+            text: `By the light of Aethelgard—${heroName}! Am I glad to see you! I was ambushed by a horde of goblins and locked inside this rusted iron cage!`
         },
         {
-            scene: 'jungle',
+            scene: 'ingame',
             location: 'SCORCHED GORGE - RUSTED CAGE',
             speaker: 'moosimus',
-            leftPortrait: 'moosimus',
             tag: 'SIR MOOSIMUS',
-            text: 'Their hulking Goblin Chieftain stole the cage key and retreated toward the eastern cliffs. Defeat him and bring the key back to set me free!'
+            text: 'Their hulking Goblin Chieftain stole the cage key and retreated deeper into the gorge. Defeat him to claim the key!'
         },
         {
-            scene: 'jungle',
+            scene: 'ingame',
             location: 'SCORCHED GORGE - RUSTED CAGE',
             speaker: 'hero',
             tag: heroTag,
             text: isAurora
-                ? 'Hold fast, Sir Moosimus! King Norman II sent me to find you. I will freeze that Goblin Chieftain in his tracks and bring back your key!'
-                : 'Hold fast, Sir Moosimus! King Norman II sent me to find you. I will defeat that Goblin Chieftain and bring back your key!'
+                ? 'Hold fast, Sir Moosimus! I will freeze that Goblin Chieftain in his tracks and bring back the key to set you free.'
+                : 'Hold fast, Sir Moosimus! I will defeat that Goblin Chieftain and bring back the key to set you free.'
         },
         {
-            scene: 'jungle',
+            scene: 'ingame',
             location: 'SCORCHED GORGE - RUSTED CAGE',
             speaker: 'moosimus',
-            leftPortrait: 'moosimus',
             tag: 'SIR MOOSIMUS',
-            text: isAurora
-                ? 'Be on your guard ahead! The pterodactyls in this gorge are pulsing with green toxic veins—corrupted by dark magic, they spit deadly acid venom! Use your icy force field!'
-                : 'Be on your guard ahead! The pterodactyls in this gorge are pulsing with green toxic veins—corrupted by dark magic, they spit deadly acid venom! Use your fiery force field!'
+            text: 'Be careful out there! The pterodactyls in this gorge have been corrupted with toxic green veins—they spit deadly venom! Raise your Force Field to deflect their blasts!'
         }
     ];
 }
 
-function buildCageUnlockLines(charId) {
+function buildCageRescueLines(charId) {
     const isAurora = charId === 'aurora';
     const heroName = isAurora ? 'Aurora' : 'Orion';
     const heroTag = isAurora ? 'AURORA' : 'ORION';
 
     return [
         {
-            scene: 'jungle',
-            location: 'SCORCHED GORGE - CAGE UNLOCKED',
+            scene: 'ingame',
+            location: 'SCORCHED GORGE - LIBERATION',
             speaker: 'moosimus',
-            leftPortrait: 'moosimus',
             tag: 'SIR MOOSIMUS',
-            text: `You did it, ${heroName}! Thank you for freeing me from that wretched cage—I owe you my life!`
+            text: `Thank you, ${heroName}! You have my eternal gratitude for freeing me from that wretched cage!`
         },
         {
-            scene: 'jungle',
-            location: 'SCORCHED GORGE - CAGE UNLOCKED',
+            scene: 'ingame',
+            location: 'SCORCHED GORGE - LIBERATION',
             speaker: 'moosimus',
-            leftPortrait: 'moosimus',
             tag: 'SIR MOOSIMUS',
-            text: 'Listen closely before you press onward: the villain who kidnapped Princess Nova is a dark sorcerer of immense power. I never learned his name, for his face was hidden behind a cold black metal mask!'
+            text: 'Listen closely before you press on: the villain who kidnapped Princess Nova is a dark sorcerer of immense power. I do not know his name, for his face was hidden behind a black metal mask—and it is his dark magic that corrupted those pterodactyls!'
         },
         {
-            scene: 'jungle',
-            location: 'SCORCHED GORGE - CAGE UNLOCKED',
-            speaker: 'moosimus',
-            leftPortrait: 'moosimus',
-            tag: 'SIR MOOSIMUS',
-            text: 'It was his vile sorcery that corrupted the pterodactyls with toxic venom, and he has dragged Princess Nova deeper into the Toxic Abyss ahead!'
-        },
-        {
-            scene: 'jungle',
-            location: 'SCORCHED GORGE - CAGE UNLOCKED',
+            scene: 'ingame',
+            location: 'SCORCHED GORGE - LIBERATION',
             speaker: 'hero',
             tag: heroTag,
             text: isAurora
-                ? 'You are gravely wounded, Sir Moosimus. Head back to Aethelgard Castle to tend your wounds and inform the King—I will shatter that masked sorcerer and rescue Princess Nova!'
-                : 'You are gravely wounded, Sir Moosimus. Head back to Aethelgard Castle to tend your wounds and inform the King—I will defeat that masked sorcerer and rescue Princess Nova!'
+                ? 'You are wounded, Sir Moosimus. Head back to Aethelgard Castle to tend your wounds and alert King Norman II—I will enter the portal and rescue Princess Nova!'
+                : 'You are wounded, Sir Moosimus. Head back to Aethelgard Castle to tend your wounds and alert King Norman II—I will enter the portal and rescue Princess Nova!'
+        },
+        {
+            scene: 'ingame',
+            location: 'SCORCHED GORGE - LIBERATION',
+            speaker: 'moosimus',
+            tag: 'SIR MOOSIMUS',
+            text: `May the stars shield you, ${heroName}! I will ride straight for the castle at once!`
         }
     ];
 }
@@ -2305,8 +2422,7 @@ const cutsceneState = {
     index: 0,
     charIndex: 0,
     tick: 0,
-    onDone: null,
-    isInLevel: false
+    onDone: null
 };
 
 function updateCutsceneUI() {
@@ -2335,12 +2451,10 @@ function updateCutsceneUI() {
     if (leftCard && heroCard) {
         heroCard.classList.remove('hero-orion', 'hero-aurora');
         heroCard.classList.add(isAurora ? 'hero-aurora' : 'hero-orion');
-        leftCard.classList.remove('npc-moosimus');
+        leftCard.classList.toggle('npc-moosimus', entry.speaker === 'moosimus');
 
         if (entry.speaker === 'king' || entry.speaker === 'moosimus') {
-            const leftType = entry.leftPortrait || entry.speaker;
-            if (leftType === 'moosimus') leftCard.classList.add('npc-moosimus');
-            paintPortraitCanvases(game.character, leftType);
+            paintPortraitCanvases(game.character, entry.speaker);
             leftCard.classList.remove('hidden');
             heroCard.classList.add('hidden');
         } else if (entry.speaker === 'hero') {
@@ -2360,14 +2474,14 @@ function updateCutsceneUI() {
         } else if (cutsceneState.index < cutsceneState.lines.length - 1) {
             promptEl.textContent = 'TAP TO CONTINUE ▼';
         } else {
-            promptEl.textContent = cutsceneState.isInLevel ? 'TAP TO RESUME QUEST ▶' : 'TAP TO ENTER THE JUNGLE ▶';
+            promptEl.textContent = entry.scene === 'ingame' ? 'TAP TO RESUME QUEST ▶' : 'TAP TO ENTER THE JUNGLE ▶';
         }
     }
 }
 
-function startDialogueCutscene(lines, onDone, isInLevel = false) {
+function startDialogueCutscene(lines, onDone, playUiChime = true) {
     sfx.init();
-    sfx.uiChime();
+    if (playUiChime) sfx.uiChime();
     resizeCanvas();
     clearInputs();
 
@@ -2376,7 +2490,6 @@ function startDialogueCutscene(lines, onDone, isInLevel = false) {
     cutsceneState.charIndex = 0;
     cutsceneState.tick = 0;
     cutsceneState.onDone = onDone;
-    cutsceneState.isInLevel = isInLevel;
 
     game.state = 'CUTSCENE';
     document.getElementById('start-screen').classList.add('hidden');
@@ -2391,12 +2504,19 @@ function startDialogueCutscene(lines, onDone, isInLevel = false) {
     csOverlay.style.display = 'flex';
     csOverlay.classList.remove('hidden');
 
-    paintPortraitCanvases(game.character, 'king');
+    const firstSpeaker = lines[0] && lines[0].speaker === 'moosimus' ? 'moosimus' : 'king';
+    paintPortraitCanvases(game.character, firstSpeaker);
     updateCutsceneUI();
+    if (lines[0] && lines[0].speaker === 'narrator') {
+        sfx.startNightAmbience();
+    } else {
+        sfx.stopNightAmbience();
+    }
+    if (lines[0]) sfx.blip(lines[0].speaker);
 }
 
 function startOpeningCutscene(onDone) {
-    startDialogueCutscene(buildCutsceneLines(game.character), onDone, false);
+    startDialogueCutscene(buildCutsceneLines(game.character), onDone, true);
 }
 
 function advanceCutscene() {
@@ -2415,7 +2535,13 @@ function advanceCutscene() {
         cutsceneState.index++;
         cutsceneState.charIndex = 0;
         cutsceneState.tick = 0;
-        sfx.blip(cutsceneState.lines[cutsceneState.index].speaker);
+        const nextSpeaker = cutsceneState.lines[cutsceneState.index].speaker;
+        if (nextSpeaker === 'narrator') {
+            sfx.startNightAmbience();
+        } else {
+            sfx.stopNightAmbience();
+        }
+        sfx.blip(nextSpeaker);
         updateCutsceneUI();
     } else {
         endCutscene();
@@ -2423,6 +2549,7 @@ function advanceCutscene() {
 }
 
 function endCutscene() {
+    sfx.stopNightAmbience();
     const csOverlay = document.getElementById('cutsceneOverlay');
     csOverlay.classList.add('hidden');
     csOverlay.style.display = 'none';
@@ -2432,7 +2559,6 @@ function endCutscene() {
     const cb = cutsceneState.onDone;
     cutsceneState.onDone = null;
     if (typeof cb === 'function') cb();
-    updateHUD();
 }
 
 function stepCutscene() {
@@ -2443,7 +2569,11 @@ function stepCutscene() {
         if (cutsceneState.tick >= 2) {
             cutsceneState.tick = 0;
             cutsceneState.charIndex++;
-            if (cutsceneState.charIndex % 3 === 0) sfx.blip(entry.speaker);
+            const prevCh = entry.text[cutsceneState.charIndex - 1] || '';
+            const isWordBoundary = prevCh === ' ' || prevCh === ',' || prevCh === '.' || prevCh === '!' || prevCh === '?' || prevCh === '—';
+            if (entry.speaker !== 'narrator' && (cutsceneState.charIndex === 1 || (isWordBoundary && cutsceneState.charIndex % 2 === 0))) {
+                sfx.blip(entry.speaker);
+            }
             updateCutsceneUI();
         }
     }
@@ -2717,18 +2847,18 @@ const LEVELS = [
         canopyFront: '#1a403c',
         toxic: false,
         map: [
-            '................................................................................................................................................',
-            '........................................................................G..H.............................................G..H...................',
-            '.....................................................................==========.......................................==========................',
-            '..................................................................V................................................V............................',
-            '................................................A............................................A....................................A.............',
-            '..........................................G..G............................................................................................G.....',
-            '.........................................======.......................====...............................................................===....',
-            '.............G..................................................................................................................................',
-            '....P.......===..^^....E.......K.......E..............CCCCCCCC..................#####........M............CCCCCCCC.......E...E..B..E...........F',
-            '#######..###########.######..#####..#######.............................................................................#############.......####',
-            '#######..###########.######..#####..#######.............................................................................#############.......####',
-            '#######..###########.######..#####..#######.............................................................................#############.......####'
+            '..........................................................................................................................................................',
+            '............................................................................G..H.............................................G..H.........................',
+            '.........................................................................==========.......................................==========......................',
+            '......................................................................................................................V...................................',
+            '......................................................A.................................................A.................................................',
+            '.................................................G..G............................................................................................G........',
+            '................................................======..........................................................................................===.......',
+            '.............G......................................................................====..............E..................................................F',
+            '....P.......===..^^....E............K................................CCCCCCCC......######...........#####........M.......CCCCCCCC......E...B..E...E...####',
+            '#######..###########.######....###########............................................................................................################.####',
+            '#######..###########.######....###########............................................................................................################.####',
+            '#######..###########.######....###########............................................................................................################.####'
         ]
     },
     {
@@ -2798,9 +2928,10 @@ const game = {
     fireballs: [],
     particles: [],
     cage: null,
-    chieftainSpawn: null,
+    moosimusIntroTriggered: false,
     hasCageKey: false,
-    moosimusFreed: false,
+    cageUnlocked: false,
+    portalBlockedCooldown: 0,
     portal: { x: 0, y: 0, w: 26, h: 36 },
     levelWidth: 0,
     levelHeight: 0
@@ -2919,18 +3050,21 @@ function loadLevel(index, announce = false, isRetry = false) {
     const clampedIndex = Math.max(0, Math.min(LEVELS.length - 1, index));
     game.levelIndex = clampedIndex;
 
+    const isToxicLevel = clampedIndex === 3;
+
     if (isRetry) {
         game.score = game.levelStartScore;
         game.gems = game.levelStartGems;
         game.flowers = game.levelStartFlowers;
-        game.hp = clampedIndex === 3 ? 1 : game.levelStartHp;
+        game.hp = isToxicLevel ? 1 : Math.max(1, Math.min(game.maxHp, game.levelStartHp));
     } else {
+        if (isToxicLevel) {
+            game.hp = 1;
+            if (announce) sfx.toxicHiss();
+        }
         game.levelStartScore = game.score;
         game.levelStartGems = game.gems;
         game.levelStartFlowers = game.flowers;
-        if (clampedIndex === 3) {
-            game.hp = 1;
-        }
         game.levelStartHp = game.hp;
     }
 
@@ -2950,21 +3084,15 @@ function loadLevel(index, announce = false, isRetry = false) {
     game.collectibles = [];
     game.fireballs = [];
     game.particles = [];
-    game.cage = null;
-    game.chieftainSpawn = null;
-    game.hasCageKey = false;
-    game.moosimusFreed = false;
     game.cameraX = 0;
     game.wizardPortalAlpha = 1;
-    updateKeyButtonUI();
+    game.cage = null;
+    game.moosimusIntroTriggered = false;
+    game.hasCageKey = false;
+    game.cageUnlocked = false;
+    game.portalBlockedCooldown = 0;
 
     const hasHardCombat = clampedIndex >= 2;
-    const isToxicLevel = clampedIndex === 3;
-
-    if (isToxicLevel) {
-        game.hp = 1;
-        if (announce) sfx.toxicHiss();
-    }
 
     const rows = lvl.map.length;
     const cols = lvl.map[0].length;
@@ -3089,6 +3217,42 @@ function loadLevel(index, announce = false, isRetry = false) {
                     collected: false,
                     bobOffset: c * 0.8
                 });
+            } else if (ch === 'K') {
+                // Rusted Iron Cage containing Sir Moosimus (Level 3)
+                game.cage = {
+                    x: wx - 4,
+                    y: wy - 12,
+                    w: 24,
+                    h: 28,
+                    unlocked: false,
+                    doorOpenProgress: 0,
+                    moosimusPresent: true,
+                    moosimusEscaping: false,
+                    moosimusX: wx + 1,
+                    moosimusY: wy - 5,
+                    moosimusVx: 0,
+                    moosimusVy: 0,
+                    moosimusGrounded: true,
+                    moosimusJumpCooldown: 0
+                };
+            } else if (ch === 'B') {
+                // Goblin Chieftain Mini-Boss (28% larger, 4 HP, throws aimed war javelins & drops Rusty Cage Key)
+                game.enemies.push({
+                    kind: 'chieftain',
+                    x: wx - 2,
+                    y: wy - 7,
+                    w: 23,
+                    h: 23,
+                    vx: -0.62,
+                    hp: 4,
+                    maxHp: 4,
+                    hitInvulnTimer: 0,
+                    throwCooldown: 55,
+                    bounceTimer: 0,
+                    soundTimer: 45,
+                    dyingTimer: 0,
+                    alive: true
+                });
             } else if (ch === 'E') {
                 game.enemies.push({
                     kind: 'goblin',
@@ -3097,45 +3261,9 @@ function loadLevel(index, announce = false, isRetry = false) {
                     w: 18,
                     h: 17,
                     vx: -0.72,
-                    soundTimer: 40 + (c * 17) % 90,
+                    soundTimer: 30 + (c * 17) % 68,
                     alive: true
                 });
-            } else if (ch === 'B') {
-                // Goblin Chieftain Mini-Boss (28% larger than standard goblins, 4 HP, throws aimed spears, drops Cage Key)
-                game.chieftainSpawn = { x: wx - 2, y: wy - 6 };
-                game.enemies.push({
-                    kind: 'chieftain',
-                    x: wx - 2,
-                    y: wy - 6,
-                    w: 23,
-                    h: 22,
-                    hp: 4,
-                    maxHp: 4,
-                    invulnTimer: 0,
-                    dyingTimer: 0,
-                    vx: -0.58,
-                    soundTimer: 35,
-                    throwTimer: 42,
-                    alive: true
-                });
-            } else if (ch === 'K') {
-                // Rusted Cage containing Sir Moosimus (Level 3)
-                game.cage = {
-                    x: wx - 6,
-                    y: wy - 12,
-                    w: 28,
-                    h: 28,
-                    introPlayed: false,
-                    unlocked: false,
-                    escaping: false,
-                    escaped: false,
-                    moosimusX: wx + 1,
-                    moosimusY: wy - 2,
-                    moosimusVx: 0,
-                    moosimusVy: 0,
-                    moosimusGrounded: true,
-                    moosimusFacing: 'left'
-                };
             } else if (ch === 'A') {
                 game.enemies.push({
                     kind: 'pterodactyl',
@@ -3150,7 +3278,7 @@ function loadLevel(index, announce = false, isRetry = false) {
                     flyPhase: c * 0.5,
                     prevFlapDown: false,
                     bounceTimer: 0,
-                    chirpTimer: 50 + (c * 23) % 80,
+                    chirpTimer: 35 + (c * 23) % 55,
                     shootTimer: 16 + (c * 11) % 20,
                     alive: true
                 });
@@ -3202,6 +3330,7 @@ function loadLevel(index, announce = false, isRetry = false) {
         }
     }
 
+    syncKeyButtonAppearance();
     updateHUD();
     if (announce) {
         if (isToxicLevel) {
@@ -3217,69 +3346,6 @@ function loadLevel(index, announce = false, isRetry = false) {
 
 function getEffectiveMaxHp() {
     return game.levelIndex === 3 ? 1 : game.maxHp;
-}
-
-function isPlayerNearCage() {
-    if (!game.cage || game.cage.unlocked) return false;
-    const cageZone = {
-        x: game.cage.x - 14,
-        y: game.cage.y - 8,
-        w: game.cage.w + 28,
-        h: game.cage.h + 16
-    };
-    return checkAABB(player, cageZone);
-}
-
-function updateKeyButtonUI() {
-    const keyBtn = document.getElementById('btn-key');
-    if (!keyBtn) return;
-    const shouldShow = game.hasCageKey && game.cage && !game.cage.unlocked;
-    keyBtn.classList.toggle('hidden', !shouldShow);
-    if (shouldShow) {
-        keyBtn.classList.toggle('ready', isPlayerNearCage());
-    }
-}
-
-function tryUnlockCage() {
-    if (game.state !== 'PLAYING' || !game.cage || game.cage.unlocked || !game.hasCageKey) return false;
-    if (!isPlayerNearCage()) {
-        showLevelBanner('RUSTED CAGE', 'WALK UP TO THE CAGE TO USE THE KEY!', 1400);
-        return false;
-    }
-
-    game.cage.unlocked = true;
-    game.moosimusFreed = true;
-    game.score += 500;
-    sfx.cageUnlock();
-    updateKeyButtonUI();
-    updateHUD();
-
-    spawnParticles(
-        game.cage.x + game.cage.w / 2,
-        game.cage.y + game.cage.h / 2,
-        ['#ffd166', '#e2e8f0', '#a7f070', '#ffffff'],
-        24,
-        3.8
-    );
-
-    setTimeout(() => {
-        if (game.state === 'PLAYING' && game.cage && game.cage.unlocked) {
-            startDialogueCutscene(buildCageUnlockLines(game.character), () => {
-                game.state = 'PLAYING';
-                player.spawnX = player.initialSpawnX;
-                player.spawnY = player.initialSpawnY;
-                if (game.cage) {
-                    game.cage.escaping = true;
-                    game.cage.moosimusVx = -1.65;
-                    game.cage.moosimusVy = 0;
-                    game.cage.moosimusFacing = 'left';
-                }
-                showLevelBanner('SIR MOOSIMUS FREED!', 'THE PORTAL TO LEVEL 4 IS OPEN!', 2200);
-            }, true);
-        }
-    }, 320);
-
-    return true;
 }
 
 function useStoredFlowerHeal() {
@@ -3300,6 +3366,49 @@ function useStoredFlowerHeal() {
         3.2
     );
     updateHUD();
+    return true;
+}
+
+function tryUnlockCage() {
+    if (game.state !== 'PLAYING' || game.levelIndex !== 2) return false;
+    if (!game.hasCageKey || game.cageUnlocked || !game.cage) return false;
+
+    const nearCage = Math.hypot(
+        (player.x + player.w / 2) - (game.cage.x + game.cage.w / 2),
+        (player.y + player.h / 2) - (game.cage.y + game.cage.h / 2)
+    ) <= 34;
+
+    if (!nearCage) {
+        showLevelBanner('RUSTED CAGE', 'GET CLOSER TO USE KEY!', 1300);
+        return false;
+    }
+
+    game.cageUnlocked = true;
+    game.cage.unlocked = true;
+    game.cage.moosimusEscaping = true;
+    game.cage.moosimusVx = 0;
+    game.cage.moosimusVy = 0;
+    game.score += 500;
+    sfx.cageUnlock();
+    syncKeyButtonAppearance();
+    updateHUD();
+
+    spawnParticles(
+        game.cage.x + game.cage.w / 2,
+        game.cage.y + game.cage.h / 2,
+        ['#ffd166', '#a7f070', '#73eff7', '#ffffff'],
+        22,
+        3.6
+    );
+
+    startDialogueCutscene(buildCageRescueLines(game.character), () => {
+        // After the final cutscene with Sir Moosimus ends, revert pitfall respawn to the far left of the map
+        player.spawnX = player.initialSpawnX;
+        player.spawnY = player.initialSpawnY;
+        game.state = 'PLAYING';
+        showLevelBanner('PORTAL OPEN!', 'SIR MOOSIMUS HEADS TO AETHELGARD!', 2200);
+    }, false);
+
     return true;
 }
 
@@ -3463,9 +3572,8 @@ function hurtPlayer(sourceX = null, isPitfall = false) {
         player.doubleJumpSpinTimer = 0;
         player.facing = 'right';
         player.invulnTimer = 85;
-        const targetCamX = player.x + player.w / 2 - virtualWidth * 0.42;
         const maxCamX = Math.max(0, game.levelWidth - virtualWidth);
-        game.cameraX = Math.max(0, Math.min(maxCamX, targetCamX));
+        game.cameraX = Math.max(0, Math.min(maxCamX, player.x + player.w / 2 - virtualWidth * 0.42));
         spawnParticles(player.x + player.w / 2, player.y + player.h / 2, ['#ffcd75', '#a7f070', '#ffffff'], 14, 3.0);
         return;
     }
@@ -3484,10 +3592,101 @@ function update() {
 
     game.frameCount++;
     if (game.shakeTimer > 0) game.shakeTimer--;
+    if (game.portalBlockedCooldown > 0) game.portalBlockedCooldown--;
 
     if (game.state === 'CUTSCENE') {
         stepCutscene();
         return;
+    }
+
+    // Animate rusted cage door swing & Sir Moosimus running left toward Aethelgard Castle
+    if (game.cage && game.cage.unlocked) {
+        if (game.cage.doorOpenProgress < 1) {
+            game.cage.doorOpenProgress = Math.min(1, game.cage.doorOpenProgress + 0.04);
+        }
+        if (game.cage.moosimusPresent && game.cage.moosimusEscaping && game.state === 'PLAYING') {
+            const c = game.cage;
+            const mW = 15;
+            const mH = 21;
+            c.moosimusVx = -2.35;
+            if (c.moosimusJumpCooldown > 0) c.moosimusJumpCooldown--;
+
+            // Look ahead to jump cleanly over chasms, spikes, or raised ledges on the journey left
+            let shouldJump = false;
+            if (c.moosimusGrounded && c.moosimusJumpCooldown === 0) {
+                const probeX = c.moosimusX - 10;
+                const footY = c.moosimusY + mH + 4;
+                const hasFloorAhead = game.tiles.some(t =>
+                    t.type !== 'spike' &&
+                    probeX >= t.x - 4 && probeX <= t.x + t.w + 4 &&
+                    footY >= t.y && footY <= t.y + t.h + 10
+                );
+                const hazardAhead = game.tiles.some(t =>
+                    (t.type === 'spike' && Math.abs((t.x + t.w / 2) - (c.moosimusX - 8)) < 18 && Math.abs(t.y - c.moosimusY) < 20) ||
+                    (t.type !== 'spike' && !t.oneWay && t.x + t.w <= c.moosimusX + 2 && t.x + t.w >= c.moosimusX - 16 && t.y < c.moosimusY + mH - 4 && t.y + t.h > c.moosimusY - 8)
+                );
+                if (!hasFloorAhead || hazardAhead) {
+                    shouldJump = true;
+                }
+            }
+
+            if (shouldJump) {
+                c.moosimusVy = -5.1;
+                c.moosimusGrounded = false;
+                c.moosimusJumpCooldown = 22;
+                spawnParticles(c.moosimusX + mW / 2, c.moosimusY + mH, ['#cbd6e2', '#a7f070'], 5, 2.0);
+            }
+
+            c.moosimusVy = Math.min(c.moosimusVy + 0.22, 5.5);
+            c.moosimusX += c.moosimusVx;
+
+            for (const tile of game.tiles) {
+                if (tile.type === 'spike' || tile.oneWay) continue;
+                if (checkAABB({ x: c.moosimusX, y: c.moosimusY, w: mW, h: mH }, tile)) {
+                    c.moosimusX = tile.x + tile.w;
+                }
+            }
+
+            const prevBottom = c.moosimusY + mH;
+            c.moosimusY += c.moosimusVy;
+            c.moosimusGrounded = false;
+
+            for (const tile of game.tiles) {
+                if (tile.type === 'spike') continue;
+                if (tile.oneWay) {
+                    if (c.moosimusVy >= 0 && prevBottom <= tile.y + 5 && c.moosimusY + mH >= tile.y &&
+                        c.moosimusX + mW > tile.x + 1 && c.moosimusX < tile.x + tile.w - 1) {
+                        c.moosimusY = tile.y - mH;
+                        c.moosimusVy = 0;
+                        c.moosimusGrounded = true;
+                    }
+                } else if (checkAABB({ x: c.moosimusX, y: c.moosimusY, w: mW, h: mH }, tile)) {
+                    if (c.moosimusVy > 0) {
+                        c.moosimusY = tile.y - mH;
+                        c.moosimusVy = 0;
+                        c.moosimusGrounded = true;
+                    } else if (c.moosimusVy < 0) {
+                        c.moosimusY = tile.y + tile.h;
+                        c.moosimusVy = 0;
+                    }
+                }
+            }
+
+            // Safety catch if Sir Moosimus drops into a wide gap while off-camera
+            if (c.moosimusY > VIRTUAL_HEIGHT - 36) {
+                c.moosimusY = VIRTUAL_HEIGHT - 36 - mH;
+                c.moosimusVy = -4.6;
+            }
+
+            if (c.moosimusGrounded && game.frameCount % 6 === 0) {
+                spawnParticles(c.moosimusX + mW, c.moosimusY + mH - 1, ['#a7f070', '#cbd6e2'], 1, 1.1);
+            }
+
+            if (c.moosimusX < -28) {
+                c.moosimusPresent = false;
+                c.moosimusEscaping = false;
+            }
+        }
     }
 
     for (let i = game.particles.length - 1; i >= 0; i--) {
@@ -3543,63 +3742,6 @@ function update() {
                 cb.y = cb.origY;
                 spawnParticles(cb.x + cb.w / 2, cb.y + cb.h / 2, ['#a7f070', '#38b764'], 6, 1.8);
             }
-        }
-    }
-
-    // Sir Moosimus Castle-Bound Escape Run after being freed from his cage
-    if (game.cage && game.cage.escaping && !game.cage.escaped) {
-        const c = game.cage;
-        const mBox = { x: c.moosimusX, y: c.moosimusY, w: 14, h: 18 };
-        c.moosimusVx = -1.65;
-        c.moosimusFacing = 'left';
-
-        const lookAheadX = c.moosimusX - 8;
-        const footY = c.moosimusY + mBox.h + 4;
-        const hasGroundAhead = game.tiles.some(t =>
-            t.type !== 'spike' &&
-            lookAheadX >= t.x && lookAheadX <= t.x + t.w &&
-            footY >= t.y && footY <= t.y + t.h + 6
-        );
-        const hazardAhead = game.tiles.some(t =>
-            t.type === 'spike' &&
-            Math.abs((t.x + t.w / 2) - (c.moosimusX - 8)) < 16 &&
-            Math.abs(t.y - c.moosimusY) < 20
-        );
-        const wallAhead = game.tiles.some(t =>
-            t.type !== 'spike' && !t.oneWay &&
-            t.x + t.w >= c.moosimusX - 10 && t.x < c.moosimusX &&
-            t.y < c.moosimusY + mBox.h - 2 && t.y + t.h > c.moosimusY
-        );
-
-        if (c.moosimusGrounded && (!hasGroundAhead || hazardAhead || wallAhead)) {
-            c.moosimusVy = -4.9;
-            c.moosimusGrounded = false;
-            sfx.jump();
-            spawnParticles(c.moosimusX + 7, c.moosimusY + mBox.h, ['#e2e8f0', '#ffd166'], 5, 2.0);
-        }
-
-        c.moosimusX += c.moosimusVx;
-        c.moosimusVy = Math.min(c.moosimusVy + 0.22, 5.5);
-        c.moosimusY += c.moosimusVy;
-        c.moosimusGrounded = false;
-        mBox.x = c.moosimusX;
-        mBox.y = c.moosimusY;
-
-        for (const tile of game.tiles) {
-            if (tile.type === 'spike') continue;
-            if (checkAABB(mBox, tile)) {
-                if (c.moosimusVy >= 0) {
-                    c.moosimusY = tile.y - mBox.h;
-                    c.moosimusVy = 0;
-                    c.moosimusGrounded = true;
-                    mBox.y = c.moosimusY;
-                }
-            }
-        }
-
-        if (c.moosimusX < -32) {
-            c.escaped = true;
-            c.escaping = false;
         }
     }
 
@@ -3674,24 +3816,22 @@ function update() {
 
     if (game.state !== 'PLAYING') return;
 
-    // Trigger Sir Moosimus Rusted Cage Approach Cutscene in Level 3
-    if (game.cage && !game.cage.introPlayed && !game.cage.unlocked) {
+    // Trigger Sir Moosimus's warning cutscene when approaching his rusted cage in Level 3
+    if (game.levelIndex === 2 && game.cage && !game.moosimusIntroTriggered) {
         const distToCage = Math.hypot(
             (player.x + player.w / 2) - (game.cage.x + game.cage.w / 2),
             (player.y + player.h / 2) - (game.cage.y + game.cage.h / 2)
         );
-        if (distToCage < 54) {
-            game.cage.introPlayed = true;
-            player.vx = 0;
-            startDialogueCutscene(buildCageApproachLines(game.character), () => {
+        if (distToCage < 46) {
+            game.moosimusIntroTriggered = true;
+            startDialogueCutscene(buildCageIntroLines(game.character), () => {
                 game.state = 'PLAYING';
-                showLevelBanner('DEFEAT THE CHIEFTAIN', 'CLAIM THE KEY TO FREE SIR MOOSIMUS!', 2300);
             }, true);
             return;
         }
     }
 
-    updateKeyButtonUI();
+    syncKeyButtonAppearance();
 
     if (player.invulnTimer > 0) player.invulnTimer--;
     if (player.castTimer > 0) player.castTimer--;
@@ -3981,30 +4121,37 @@ function update() {
         let exploded = false;
 
         for (const enemy of game.enemies) {
-            if (enemy.alive && checkAABB(fb, enemy)) {
+            if (!enemy.alive || (enemy.dyingTimer || 0) > 0) continue;
+            if (checkAABB(fb, enemy)) {
                 exploded = true;
                 if (enemy.kind === 'chieftain') {
-                    if ((enemy.dyingTimer || 0) <= 0 && (enemy.invulnTimer || 0) <= 0) {
-                        enemy.hp = Math.max(0, enemy.hp - 1);
-                        enemy.invulnTimer = 38;
+                    // Prevent spamming shots while Chieftain is flashing from a recent hit
+                    if ((enemy.hitInvulnTimer || 0) <= 0) {
+                        enemy.hp--;
+                        enemy.hitInvulnTimer = 42;
                         sfx.bossHit();
                         spawnParticles(
                             enemy.x + enemy.w / 2,
                             enemy.y + enemy.h / 2,
-                            fbIce ? ['#f4f4f4', '#73eff7', '#ffcd75'] : ['#ffcd75', '#ef7d57', '#ff1e7a'],
+                            fbIce ? ['#f4f4f4', '#73eff7', '#41a6f6'] : ['#ffcd75', '#ef7d57', '#ff1e7a'],
                             14,
-                            3.4
+                            3.6
                         );
                         if (enemy.hp <= 0) {
-                            enemy.dyingTimer = 58;
+                            enemy.dyingTimer = 54;
                             enemy.vx = 0;
                             game.score += 1000;
                             sfx.deathFireAndBones();
                             updateHUD();
                         }
                     } else {
-                        sfx.explosion(fbIce);
-                        spawnParticles(fb.x + 4, fb.y + 4, ['#cbd6e2', '#ffcd75'], 6, 2.0);
+                        spawnParticles(
+                            fb.x + 4,
+                            fb.y + 4,
+                            fbIce ? ['#f4f4f4', '#73eff7'] : ['#ffcd75', '#ef7d57'],
+                            6,
+                            2.0
+                        );
                     }
                 } else {
                     enemy.alive = false;
@@ -4045,6 +4192,7 @@ function update() {
         }
     }
 
+    // Collectibles (Gems, Flowers, and the Goblin Chieftain's Rusty Cage Key)
     for (const item of game.collectibles) {
         if (!item.collected && checkAABB(player, item)) {
             item.collected = true;
@@ -4065,42 +4213,47 @@ function update() {
                     sfx.flower();
                     spawnParticles(item.x + 7, item.y + 6, ['#ff85b3', '#ffcd75', '#a7f070'], 14, 3.0);
                 }
-            } else if (item.kind === 'cageKey') {
+            } else if (item.kind === 'key') {
                 game.hasCageKey = true;
-                game.score += 350;
-                if (game.chieftainSpawn) {
-                    player.spawnX = game.chieftainSpawn.x;
-                    player.spawnY = game.chieftainSpawn.y;
+                game.score += 400;
+                sfx.cageUnlock();
+                syncKeyButtonAppearance();
+                spawnParticles(item.x + 7, item.y + 7, ['#ffd166', '#ffffff', '#ef7d57'], 18, 3.4);
+
+                if (game.levelIndex === 2) {
+                    // Move pitfall checkpoint to the Chieftain's arena so falling sends you back here instead of closer to the cage
+                    player.spawnX = Math.max(0, Math.min(game.levelWidth - player.w, Math.round(item.x - 18)));
+                    player.spawnY = Math.round(item.y - 10);
+
+                    // Spawn a fresh corrupted pterodactyl in the middle of the map for the return journey
+                    const ambushX = Math.round(game.levelWidth * 0.48);
+                    const ambushY = VIRTUAL_HEIGHT - 124;
+                    game.enemies.push({
+                        kind: 'pterodactyl',
+                        x: ambushX,
+                        y: ambushY,
+                        baseY: ambushY,
+                        w: 22,
+                        h: 14,
+                        vx: -1.18,
+                        startX: ambushX,
+                        patrolRange: 84,
+                        flyPhase: 0,
+                        prevFlapDown: false,
+                        bounceTimer: 0,
+                        chirpTimer: 30,
+                        shootTimer: 22,
+                        alive: true
+                    });
                 }
-                const midWorldX = Math.round(game.levelWidth * 0.52);
-                const midWorldY = VIRTUAL_HEIGHT - game.levelHeight + 4 * TILE_SIZE - 2;
-                game.enemies.push({
-                    kind: 'pterodactyl',
-                    x: midWorldX,
-                    y: midWorldY,
-                    baseY: midWorldY,
-                    w: 22,
-                    h: 14,
-                    vx: -1.18,
-                    startX: midWorldX,
-                    patrolRange: 84,
-                    flyPhase: 0,
-                    prevFlapDown: false,
-                    bounceTimer: 0,
-                    chirpTimer: 45,
-                    shootTimer: 22,
-                    alive: true
-                });
-                spawnParticles(midWorldX + 11, midWorldY + 7, ['#00e676', '#a7f070', '#5d275d'], 14, 3.0);
-                sfx.portalEnter();
-                updateKeyButtonUI();
-                spawnParticles(item.x + 6, item.y + 4, ['#ffd166', '#ffffff', '#ef7d57'], 18, 3.4);
-                showLevelBanner('RUSTY CAGE KEY FOUND!', 'RETURN TO SIR MOOSIMUS & PRESS THE KEY!', 2500);
+
+                showLevelBanner('RUSTY KEY ACQUIRED!', 'RETURN TO SIR MOOSIMUS\'S CAGE!', 2400);
             }
             updateHUD();
         }
     }
 
+    // Enemies (Goblins, Pterodactyls & Goblin Chieftain Mini-Boss)
     for (const enemy of game.enemies) {
         if (!enemy.alive) continue;
 
@@ -4110,35 +4263,36 @@ function update() {
         );
 
         if (enemy.kind === 'chieftain') {
-            if (enemy.invulnTimer > 0) enemy.invulnTimer--;
-
-            if ((enemy.dyingTimer || 0) > 0) {
+            if (enemy.dyingTimer > 0) {
                 enemy.dyingTimer--;
-                if (enemy.dyingTimer % 6 === 0) {
+                if (enemy.dyingTimer % 4 === 0) {
                     spawnParticles(
                         enemy.x + Math.random() * enemy.w,
                         enemy.y + Math.random() * enemy.h,
-                        ['#f4f4f4', '#cbd6e2', '#ffcd75'],
-                        3,
+                        ['#ffcd75', '#ef7d57', '#ffffff'],
+                        2,
                         2.0
                     );
                 }
                 if (enemy.dyingTimer <= 0) {
                     enemy.alive = false;
+                    // Drop the Rusty Cage Key on the platform
                     game.collectibles.push({
-                        kind: 'cageKey',
-                        x: enemy.x + 5,
-                        y: enemy.y + enemy.h - 9,
-                        w: 12,
-                        h: 8,
+                        kind: 'key',
+                        x: Math.round(enemy.x + enemy.w / 2 - 7),
+                        y: Math.round(enemy.y + enemy.h - 14),
+                        w: 14,
+                        h: 14,
                         type: 'rustyKey',
                         collected: false,
                         bobOffset: 0
                     });
-                    spawnParticles(enemy.x + enemy.w / 2, enemy.y + enemy.h / 2, ['#ffd166', '#ffffff'], 16, 3.0);
+                    spawnParticles(enemy.x + enemy.w / 2, enemy.y + enemy.h / 2, ['#ffd166', '#ffffff', '#a7f070'], 18, 3.2);
                 }
                 continue;
             }
+
+            if (enemy.hitInvulnTimer > 0) enemy.hitInvulnTimer--;
 
             if (enemy.bounceTimer > 0) {
                 enemy.bounceTimer--;
@@ -4151,7 +4305,7 @@ function update() {
                     }
                 }
                 if (enemy.bounceTimer === 0) {
-                    enemy.vx = (enemy.vx >= 0 ? 1 : -1) * 0.58;
+                    enemy.vx = (enemy.vx >= 0 ? 1 : -1) * 0.62;
                 }
             } else {
                 enemy.x += enemy.vx;
@@ -4178,45 +4332,49 @@ function update() {
                 }
             }
 
+            // Aim & throw war javelins directly toward the player when facing them
             const chiefCenterX = enemy.x + enemy.w / 2;
             const playerCenterX = player.x + player.w / 2;
-            const horizDist = Math.abs(playerCenterX - chiefCenterX);
-            const isFacingWizard = (enemy.vx >= 0 && playerCenterX >= chiefCenterX) ||
+            const isFacingPlayer = (enemy.vx >= 0 && playerCenterX >= chiefCenterX) ||
                                    (enemy.vx < 0 && playerCenterX < chiefCenterX);
 
-            if (distToPlayer < 160) {
-                enemy.soundTimer--;
-                if (enemy.soundTimer <= 0) {
-                    enemy.soundTimer = 85 + Math.floor(Math.random() * 65);
-                    sfx.goblinRamble(1);
-                }
-            }
-
-            if ((enemy.bounceTimer || 0) <= 0 && horizDist < 230 && distToPlayer < 250 && isFacingWizard) {
-                enemy.throwTimer--;
-                if (enemy.throwTimer <= 0) {
-                    enemy.throwTimer = 64;
+            if (distToPlayer < 235 && isFacingPlayer) {
+                enemy.throwCooldown--;
+                if (enemy.throwCooldown <= 0) {
+                    enemy.throwCooldown = 78;
                     const sx = chiefCenterX + (enemy.vx >= 0 ? 10 : -10);
                     const sy = enemy.y + enemy.h * 0.42;
                     const tx = playerCenterX;
                     const ty = player.y + player.h * 0.5;
-                    const dist = Math.hypot(tx - sx, ty - sy) || 1;
-                    const spearSpeed = 3.05;
+                    const dx = tx - sx;
+                    const dy = ty - sy;
+                    const dist = Math.hypot(dx, dy) || 1;
+                    const spearSpeed = 2.95;
+
                     game.enemyProjectiles.push({
                         kind: 'spear',
                         x: sx - 7,
                         y: sy - 2,
                         w: 14,
-                        h: 4,
-                        vx: ((tx - sx) / dist) * spearSpeed,
-                        vy: ((ty - sy) / dist) * spearSpeed,
-                        life: 140
+                        h: 5,
+                        vx: (dx / dist) * spearSpeed,
+                        vy: (dy / dist) * spearSpeed,
+                        angle: Math.atan2(dy, dx),
+                        life: 160
                     });
-                    sfx.spearThrow(Math.max(0.4, 1 - distToPlayer / 250));
-                    spawnParticles(sx, sy, ['#ffcd75', '#cbd6e2', '#ef7d57'], 6, 2.2);
+                    sfx.spearThrow(Math.max(0.4, 1 - distToPlayer / 260));
+                    spawnParticles(sx, sy, ['#ffcd75', '#ef7d57', '#f4f4f4'], 6, 2.0);
                 }
             } else {
-                enemy.throwTimer = Math.min(enemy.throwTimer, 16);
+                enemy.throwCooldown = Math.min(enemy.throwCooldown, 24);
+            }
+
+            if (distToPlayer < 165) {
+                enemy.soundTimer--;
+                if (enemy.soundTimer <= 0) {
+                    enemy.soundTimer = 68 + Math.floor(Math.random() * 58);
+                    sfx.goblinRamble(Math.min(1.2, (1 - distToPlayer / 180) * 1.15));
+                }
             }
         } else if (enemy.kind === 'goblin') {
             if (enemy.bounceTimer > 0) {
@@ -4257,11 +4415,11 @@ function update() {
                 }
             }
 
-            if (distToPlayer < 130) {
+            if (distToPlayer < 145) {
                 enemy.soundTimer--;
                 if (enemy.soundTimer <= 0) {
-                    enemy.soundTimer = 95 + Math.floor(Math.random() * 85);
-                    sfx.goblinRamble(1 - distToPlayer / 150);
+                    enemy.soundTimer = 72 + Math.floor(Math.random() * 64);
+                    sfx.goblinRamble(1 - distToPlayer / 160);
                 }
             }
         } else if (enemy.kind === 'pterodactyl') {
@@ -4315,8 +4473,8 @@ function update() {
             }
 
             const flapDown = Math.floor(game.frameCount / 8) % 2 === 1;
-            if (flapDown && !enemy.prevFlapDown && distToPlayer < 165) {
-                sfx.pteroFlap(1 - distToPlayer / 180);
+            if (flapDown && !enemy.prevFlapDown && distToPlayer < 175) {
+                sfx.pteroFlap(1 - distToPlayer / 185);
             }
             enemy.prevFlapDown = flapDown;
 
@@ -4326,18 +4484,21 @@ function update() {
             const isFacingWizard = (enemy.vx >= 0 && playerCenterX >= pteroCenterX) ||
                                    (enemy.vx < 0 && playerCenterX < pteroCenterX);
 
-            if (distToPlayer < 175) {
+            // Dinosaur roar only when close to the player AND flying toward the player
+            if (distToPlayer < 145 && isFacingWizard) {
                 enemy.chirpTimer--;
                 if (enemy.chirpTimer <= 0) {
-                    enemy.chirpTimer = 115 + Math.floor(Math.random() * 80);
-                    sfx.pteroChirp(1 - distToPlayer / 190);
+                    enemy.chirpTimer = 95 + Math.floor(Math.random() * 65);
+                    sfx.pteroChirp(Math.max(0.45, 1 - distToPlayer / 155));
                 }
+            } else {
+                enemy.chirpTimer = Math.min(enemy.chirpTimer, 18);
             }
 
-            if (game.levelIndex >= 2 && (enemy.bounceTimer || 0) <= 0 && horizDist < 240 && distToPlayer < 260 && isFacingWizard) {
+            if (game.levelIndex >= 2 && (enemy.bounceTimer || 0) <= 0 && horizDist < 225 && distToPlayer < 245 && isFacingWizard) {
                 enemy.shootTimer--;
                 if (enemy.shootTimer <= 0) {
-                    enemy.shootTimer = game.levelIndex === 3 ? 58 : 72;
+                    enemy.shootTimer = game.levelIndex === 3 ? 58 : 74;
                     const ox = pteroCenterX + (enemy.vx >= 0 ? 8 : -8);
                     const oy = enemy.y + enemy.h * 0.72;
                     const tx = playerCenterX;
@@ -4373,28 +4534,24 @@ function update() {
         const isStomping = !player.isHanging && player.vy > 0 && (player.y + player.h - player.vy) <= enemy.y + enemy.h * 0.72;
 
         if (isStomping && checkAABB(player, enemy)) {
+            player.vy = -4.0;
+            player.jumpsRemaining = Math.max(1, player.jumpsRemaining);
             if (enemy.kind === 'chieftain') {
-                player.vy = -4.2;
-                player.jumpsRemaining = Math.max(1, player.jumpsRemaining);
-                if ((enemy.dyingTimer || 0) <= 0 && (enemy.invulnTimer || 0) <= 0) {
-                    enemy.hp = Math.max(0, enemy.hp - 1);
-                    enemy.invulnTimer = 38;
+                if ((enemy.hitInvulnTimer || 0) <= 0) {
+                    enemy.hp--;
+                    enemy.hitInvulnTimer = 42;
                     sfx.bossHit();
                     spawnParticles(enemy.x + enemy.w / 2, enemy.y + enemy.h / 2, ['#ffcd75', '#ef7d57', '#ff1e7a'], 14, 3.4);
                     if (enemy.hp <= 0) {
-                        enemy.dyingTimer = 58;
+                        enemy.dyingTimer = 54;
                         enemy.vx = 0;
                         game.score += 1000;
                         sfx.deathFireAndBones();
                         updateHUD();
                     }
-                } else {
-                    sfx.stomp();
                 }
             } else {
                 enemy.alive = false;
-                player.vy = -4.0;
-                player.jumpsRemaining = Math.max(1, player.jumpsRemaining);
                 game.score += 250;
                 sfx.stomp();
                 spawnParticles(enemy.x + enemy.w / 2, enemy.y + enemy.h / 2, ['#a7f070', '#ffcd75'], 14, 3.4);
@@ -4449,7 +4606,7 @@ function update() {
 
         if (game.frameCount % 2 === 0) {
             if (ep.kind === 'spear') {
-                spawnParticles(ep.x + ep.w / 2, ep.y + ep.h / 2, ['#ffcd75', '#ef7d57', '#cbd6e2'], 1, 0.9);
+                spawnParticles(ep.x + ep.w / 2, ep.y + 2, ['#ffcd75', '#cbd6e2'], 1, 0.7);
             } else {
                 spawnParticles(ep.x + 4, ep.y + 4, ['#76ff03', '#00e676', '#1b5e20'], 1, 0.9);
             }
@@ -4499,9 +4656,10 @@ function update() {
     }
 
     if (checkAABB(player, game.portal)) {
-        if (game.levelIndex === 2 && !game.moosimusFreed) {
-            if (game.frameCount % 45 === 0) {
-                showLevelBanner('PORTAL SEALED', 'FREE SIR MOOSIMUS FROM HIS CAGE FIRST!', 1600);
+        if (game.levelIndex === 2 && !game.cageUnlocked) {
+            if (game.portalBlockedCooldown <= 0) {
+                game.portalBlockedCooldown = 90;
+                showLevelBanner('PORTAL SEALED!', 'FREE SIR MOOSIMUS FIRST!', 1600);
             }
         } else {
             sfx.portalEnter();
@@ -4675,66 +4833,79 @@ function drawRustedCage() {
     const cx = Math.round(c.x);
     const cy = Math.round(c.y);
 
-    // Draw Sir Moosimus inside the cage (before unlock) or running toward Aethelgard Castle (after unlock)
-    if (!c.escaped) {
-        const mx = Math.round(c.moosimusX);
-        const my = Math.round(c.moosimusY);
-        let spriteKey = 'sirMoosimus';
-        let dir = 'right';
-        if (c.escaping) {
-            dir = c.moosimusFacing || 'left';
-            spriteKey = Math.floor(game.frameCount / 6) % 2 === 0 ? 'sirMoosimusRun1' : 'sirMoosimusRun2';
-        } else {
-            dir = (player.x + player.w / 2) >= (cx + c.w / 2) ? 'right' : 'left';
-        }
-        if (spriteCache[spriteKey]) {
-            ctx.drawImage(spriteCache[spriteKey][dir], mx, my, 15, 18);
+    // Back iron bars & dark interior shadow
+    ctx.fillStyle = 'rgba(14, 10, 16, 0.55)';
+    ctx.fillRect(cx + 2, cy + 3, c.w - 4, c.h - 5);
+
+    ctx.fillStyle = '#3b241c';
+    for (let bx = cx + 4; bx <= cx + c.w - 5; bx += 5) {
+        ctx.fillRect(bx, cy + 3, 1, c.h - 5);
+    }
+
+    // Draw Sir Moosimus inside the cage (before escape) or sprinting left back to Aethelgard Castle
+    if (c.moosimusPresent) {
+        if (c.moosimusEscaping) {
+            const runAnim = Math.floor(game.frameCount / 6) % 2 === 0 ? 'sirMoosimusRun1' : 'sirMoosimusRun2';
+            if (spriteCache[runAnim]) {
+                ctx.drawImage(
+                    spriteCache[runAnim].left,
+                    Math.round(c.moosimusX - 2),
+                    Math.round(c.moosimusY - 1),
+                    20,
+                    22
+                );
+            }
+        } else if (spriteCache.sirMoosimus) {
+            const lookDir = (player.x + player.w / 2) >= (cx + c.w / 2) ? 'right' : 'left';
+            ctx.drawImage(
+                spriteCache.sirMoosimus[lookDir],
+                Math.round(cx + 3),
+                Math.round(cy + 6),
+                19,
+                21
+            );
         }
     }
 
-    // Rusted Iron Cage Frame & Bars
-    ctx.fillStyle = '#3b231d';
-    ctx.fillRect(cx, cy, c.w, 3);
+    // Rusted outer frame (top arch, base plate & side posts)
+    ctx.fillStyle = '#5c3324';
+    ctx.fillRect(cx, cy + 2, c.w, 3);
+    ctx.fillRect(cx + 3, cy, c.w - 6, 3);
     ctx.fillRect(cx, cy + c.h - 3, c.w, 3);
-    ctx.fillStyle = '#7a444a';
-    ctx.fillRect(cx + 1, cy + 1, c.w - 2, 1);
+    ctx.fillRect(cx, cy + 2, 2, c.h - 2);
+    ctx.fillRect(cx + c.w - 2, cy + 2, 2, c.h - 2);
 
+    // Rust corrosion highlights
+    ctx.fillStyle = '#9c4e2c';
+    ctx.fillRect(cx + 2, cy + 2, 6, 1);
+    ctx.fillRect(cx + 12, cy + 3, 5, 1);
+    ctx.fillRect(cx + 1, cy + 9, 1, 6);
+    ctx.fillRect(cx + c.w - 2, cy + 14, 1, 5);
+
+    // Front iron bars (swing open toward the left hinge when unlocked)
+    const swingRatio = Math.max(0.18, 1 - c.doorOpenProgress * 0.82);
+    const doorWidth = Math.round((c.w - 4) * swingRatio);
+    for (let i = 0; i < 4; i++) {
+        const barX = cx + 3 + Math.round((i / 3) * Math.max(2, doorWidth - 2));
+        ctx.fillStyle = '#4a291e';
+        ctx.fillRect(barX, cy + 4, 2, c.h - 7);
+        ctx.fillStyle = '#8c4427';
+        ctx.fillRect(barX, cy + 6 + (i % 2) * 5, 1, 4);
+    }
+
+    // Rusted padlock on the right latch while locked
     if (!c.unlocked) {
-        for (let bx = cx + 2; bx <= cx + c.w - 4; bx += 5) {
-            ctx.fillStyle = '#472d3c';
-            ctx.fillRect(bx, cy + 3, 2, c.h - 6);
-            ctx.fillStyle = '#9c5238';
-            ctx.fillRect(bx, cy + 6, 1, 5);
-            ctx.fillRect(bx + 1, cy + 15, 1, 4);
-        }
-        // Heavy Golden Padlock
-        const lx = cx + Math.floor(c.w / 2) - 3;
-        const ly = cy + Math.floor(c.h / 2) - 2;
-        ctx.fillStyle = '#94b0c2';
-        ctx.fillRect(lx + 1, ly - 3, 4, 3);
+        ctx.fillStyle = '#b55d2b';
+        ctx.fillRect(cx + c.w - 6, cy + 12, 5, 6);
         ctx.fillStyle = '#ffd166';
-        ctx.fillRect(lx, ly, 6, 6);
-        ctx.fillStyle = '#14151f';
-        ctx.fillRect(lx + 2, ly + 2, 2, 2);
-
-        if (game.hasCageKey && isPlayerNearCage()) {
-            const bob = Math.round(Math.sin(game.frameCount * 0.15) * 2);
-            ctx.fillStyle = '#ffd166';
-            ctx.fillRect(cx + 10, cy - 10 + bob, 8, 2);
-            ctx.fillRect(cx + 12, cy - 8 + bob, 4, 2);
-        }
-    } else {
-        // Unlocked side pillars only
-        ctx.fillStyle = '#472d3c';
-        ctx.fillRect(cx + 1, cy + 3, 2, c.h - 6);
-        ctx.fillRect(cx + c.w - 3, cy + 3, 2, c.h - 6);
+        ctx.fillRect(cx + c.w - 4, cy + 14, 1, 2);
     }
 }
 
 function drawFantasyPortal() {
     const px = Math.round(game.portal.x);
     const py = Math.round(game.portal.y);
-    const isPortalActive = !(game.levelIndex === 2 && !game.moosimusFreed);
+    const isPortalActive = !(game.levelIndex === 2 && !game.cageUnlocked);
 
     ctx.fillStyle = '#333c57';
     ctx.fillRect(px - 2, py + 6, 6, 30);
@@ -4749,7 +4920,7 @@ function drawFantasyPortal() {
 
     const runeGlow = isPortalActive
         ? (Math.floor(game.frameCount / 10) % 2 === 0 ? '#ffcd75' : '#a7f070')
-        : '#26293a';
+        : '#3b4861';
     ctx.fillStyle = runeGlow;
     ctx.fillRect(px, py + 12, 2, 3);
     ctx.fillRect(px, py + 20, 2, 3);
@@ -4767,10 +4938,10 @@ function drawFantasyPortal() {
     ctx.fillRect(px + 19, py + 1, 7, 1);
 
     if (!isPortalActive) {
-        // Darkened empty stone archway until Sir Moosimus is freed
+        // Empty darkened stone archway until Sir Moosimus is freed
         ctx.fillStyle = '#0c1614';
         ctx.fillRect(px + 4, py + 8, 18, 28);
-        ctx.fillStyle = '#14221e';
+        ctx.fillStyle = '#182624';
         ctx.fillRect(px + 6, py + 10, 14, 26);
         return;
     }
@@ -4795,16 +4966,15 @@ function render() {
 
     if (game.state === 'CUTSCENE') {
         const entry = cutsceneState.lines[cutsceneState.index];
-        if (entry && entry.scene === 'kingdom') {
+        if (entry && entry.scene === 'ingame') {
+            // Render the live game world behind the in-level dialogue scroll
+        } else if (entry && entry.scene === 'kingdom') {
             renderAethelgardPanorama(ctx, virtualWidth, VIRTUAL_HEIGHT, game.frameCount);
-        } else if (entry && entry.scene === 'jungle') {
-            drawJungleBackground(LEVELS[game.levelIndex] || LEVELS[2]);
-            ctx.fillStyle = 'rgba(8, 18, 14, 0.45)';
-            ctx.fillRect(0, 0, virtualWidth, VIRTUAL_HEIGHT);
+            return;
         } else {
             renderThroneRoom(ctx, virtualWidth, VIRTUAL_HEIGHT, game.frameCount);
+            return;
         }
-        return;
     }
 
     const lvl = LEVELS[game.levelIndex] || LEVELS[0];
@@ -4901,39 +5071,40 @@ function render() {
 
     for (const enemy of game.enemies) {
         if (!enemy.alive) continue;
-        const dir = enemy.vx >= 0 ? 'right' : 'left';
+        const dir = enemy.vx > 0 ? 'right' : 'left';
 
         if (enemy.kind === 'chieftain') {
             if ((enemy.dyingTimer || 0) > 0) {
-                if (spriteCache.chieftainSkeleton) {
+                if (spriteCache.wizardSkeleton) {
                     ctx.drawImage(
-                        spriteCache.chieftainSkeleton[dir],
+                        spriteCache.wizardSkeleton[dir],
                         Math.round(enemy.x - 1),
-                        Math.round(enemy.y - 1),
+                        Math.round(enemy.y - 2),
                         25,
-                        24
+                        25
                     );
                 }
                 continue;
             }
 
-            const showChief = (enemy.invulnTimer || 0) === 0 || Math.floor(enemy.invulnTimer / 3) % 2 === 0;
-            if (showChief) {
-                const anim = Math.floor(game.frameCount / 10) % 2 === 0 ? 'chieftain1' : 'chieftain2';
-                if (spriteCache[anim]) {
-                    ctx.drawImage(spriteCache[anim][dir], Math.round(enemy.x - 1), Math.round(enemy.y - 1), 25, 24);
-                }
+            // Mini-boss 4-segment health bar floating above the Goblin Chieftain
+            const barW = 24;
+            const barH = 4;
+            const barX = Math.round(enemy.x + enemy.w / 2 - barW / 2);
+            const barY = Math.round(enemy.y - 8);
+            ctx.fillStyle = '#14151f';
+            ctx.fillRect(barX - 1, barY - 1, barW + 2, barH + 2);
+            for (let s = 0; s < enemy.maxHp; s++) {
+                ctx.fillStyle = s < enemy.hp ? '#ff1e7a' : '#331c28';
+                ctx.fillRect(barX + s * 6, barY, 5, barH);
             }
 
-            // 4-Segment Mini-Boss Health Bar above the Goblin Chieftain
-            const barW = 24;
-            const bx = Math.round(enemy.x + enemy.w / 2 - barW / 2);
-            const by = Math.round(enemy.y - 7);
-            ctx.fillStyle = '#14151f';
-            ctx.fillRect(bx - 1, by - 1, barW + 2, 5);
-            for (let s = 0; s < enemy.maxHp; s++) {
-                ctx.fillStyle = s < enemy.hp ? '#ff1e7a' : '#26293a';
-                ctx.fillRect(bx + s * 6, by, 5, 3);
+            const flashHide = (enemy.hitInvulnTimer || 0) > 0 && Math.floor(enemy.hitInvulnTimer / 3) % 2 === 1;
+            if (!flashHide) {
+                const anim = Math.floor(game.frameCount / 11) % 2 === 0 ? 'chieftain1' : 'chieftain2';
+                if (spriteCache[anim]) {
+                    ctx.drawImage(spriteCache[anim][dir], Math.round(enemy.x - 1), Math.round(enemy.y - 2), 25, 25);
+                }
             }
         } else if (enemy.kind === 'goblin') {
             const anim = Math.floor(game.frameCount / 11) % 2 === 0 ? 'goblin1' : 'goblin2';
@@ -4941,15 +5112,15 @@ function render() {
                 ctx.drawImage(spriteCache[anim][dir], Math.round(enemy.x - 1), Math.round(enemy.y - 1), 20, 18);
             }
         } else if (enemy.kind === 'pterodactyl') {
-            const isCorrupted = game.levelIndex >= 2;
-            const flapDown = Math.floor(game.frameCount / 8) % 2 === 1;
-            const anim = isCorrupted
-                ? (flapDown ? 'pteroToxic2' : 'pteroToxic1')
-                : (flapDown ? 'ptero2' : 'ptero1');
+            const isToxicPtero = game.levelIndex >= 2;
+            const flapFrame = Math.floor(game.frameCount / 8) % 2 === 0;
+            const anim = isToxicPtero
+                ? (flapFrame ? 'pteroToxic1' : 'pteroToxic2')
+                : (flapFrame ? 'ptero1' : 'ptero2');
             if (spriteCache[anim]) {
                 ctx.drawImage(spriteCache[anim][dir], Math.round(enemy.x - 1), Math.round(enemy.y - 1), 24, 15);
             }
-            if (isCorrupted && game.frameCount % 16 === 0) {
+            if (isToxicPtero && game.frameCount % 18 === 0) {
                 spawnParticles(enemy.x + enemy.w / 2, enemy.y + enemy.h - 2, ['#00e676', '#a7f070'], 1, 0.8);
             }
         }
@@ -4998,7 +5169,6 @@ function render() {
                 );
             }
 
-            // Force Field Bubble (Fiery for Orion, Blue/Cyan Icy for Aurora)
             if (player.shieldActive) {
                 const bx = Math.round(player.x - 6);
                 const by = Math.round(player.y - 5);
@@ -5045,54 +5215,62 @@ function render() {
         }
     }
 
-    // Enemy Projectiles: Goblin Chieftain Aimed War Javelins vs Pterodactyl Acid Venom
+    // Enemy Projectiles (Goblin Chieftain Aimed War Javelins & Pterodactyl Toxic Venom Blasts)
     for (const ep of game.enemyProjectiles) {
-        if (ep.kind === 'spear') {
-            const cx = ep.x + ep.w / 2;
-            const cy = ep.y + ep.h / 2;
-            const angle = Math.atan2(ep.vy, ep.vx);
+        const ex = Math.round(ep.x);
+        const ey = Math.round(ep.y);
 
+        if (ep.kind === 'spear') {
+            const angle = ep.angle !== undefined ? ep.angle : (ep.vx >= 0 ? 0 : Math.PI);
             ctx.save();
-            ctx.translate(Math.round(cx), Math.round(cy));
+            ctx.translate(ex + ep.w / 2, ey + ep.h / 2);
             ctx.rotate(angle);
 
-            // Banded hardwood shaft
-            ctx.fillStyle = '#7a444a';
-            ctx.fillRect(-8, -1, 13, 2);
-            ctx.fillStyle = '#ffcd75';
-            ctx.fillRect(-3, -1, 2, 2);
+            // Speed streak aura
+            ctx.fillStyle = 'rgba(255, 205, 117, 0.25)';
+            ctx.fillRect(-10, -2, 18, 4);
 
-            // Crimson war-feathers at tail
+            // Crimson war-feathers at the tail
             ctx.fillStyle = '#b13e53';
-            ctx.fillRect(-9, -2, 3, 1);
-            ctx.fillRect(-9, 1, 3, 1);
+            ctx.fillRect(-8, -3, 3, 2);
+            ctx.fillRect(-8, 1, 3, 2);
+            ctx.fillStyle = '#ef7d57';
+            ctx.fillRect(-7, -2, 2, 1);
+            ctx.fillRect(-7, 1, 2, 1);
 
-            // Gleaming barbed iron spearhead
+            // Banded hardwood shaft
+            ctx.fillStyle = '#5c3324';
+            ctx.fillRect(-6, -1, 11, 2);
+            ctx.fillStyle = '#9c5a3c';
+            ctx.fillRect(-5, -1, 9, 1);
+            ctx.fillStyle = '#ffcd75';
+            ctx.fillRect(3, -1, 1, 2);
+
+            // Jagged barbed steel spearhead
             ctx.fillStyle = '#94b0c2';
             ctx.fillRect(4, -2, 3, 4);
             ctx.fillStyle = '#f4f4f4';
-            ctx.fillRect(6, -1, 3, 2);
+            ctx.fillRect(5, -2, 3, 4);
+            ctx.fillRect(8, -1, 2, 2);
+
             ctx.restore();
-            continue;
+        } else {
+            const pulse = Math.sin(game.frameCount * 0.35 + ex * 0.2) * 0.15 + 0.35;
+
+            ctx.fillStyle = `rgba(0, 230, 118, ${pulse.toFixed(2)})`;
+            ctx.fillRect(ex - 2, ey - 2, 12, 12);
+
+            ctx.fillStyle = '#0d4d26';
+            ctx.fillRect(ex, ey, 8, 8);
+
+            ctx.fillStyle = '#00e676';
+            ctx.fillRect(ex + 1, ey + 1, 6, 6);
+
+            ctx.fillStyle = '#76ff03';
+            ctx.fillRect(ex + 2, ey + 2, 4, 4);
+            ctx.fillStyle = '#eaffd0';
+            ctx.fillRect(ex + 2, ey + 2, 2, 2);
         }
-
-        const ex = Math.round(ep.x);
-        const ey = Math.round(ep.y);
-        const pulse = Math.sin(game.frameCount * 0.35 + ex * 0.2) * 0.15 + 0.35;
-
-        ctx.fillStyle = `rgba(0, 230, 118, ${pulse.toFixed(2)})`;
-        ctx.fillRect(ex - 2, ey - 2, 12, 12);
-
-        ctx.fillStyle = '#0d4d26';
-        ctx.fillRect(ex, ey, 8, 8);
-
-        ctx.fillStyle = '#00e676';
-        ctx.fillRect(ex + 1, ey + 1, 6, 6);
-
-        ctx.fillStyle = '#76ff03';
-        ctx.fillRect(ex + 2, ey + 2, 4, 4);
-        ctx.fillStyle = '#eaffd0';
-        ctx.fillRect(ex + 2, ey + 2, 2, 2);
     }
 
     // Hero Projectiles (Orion's Fireballs vs Aurora's Ice Blasts)
@@ -5173,7 +5351,9 @@ function setupControls() {
 
     const unlockAudio = () => sfx.init();
     window.addEventListener('touchstart', unlockAudio, { passive: true });
+    window.addEventListener('touchend', unlockAudio, { passive: true });
     window.addEventListener('pointerdown', unlockAudio, { passive: true });
+    window.addEventListener('click', unlockAudio, { passive: true });
     window.addEventListener('keydown', unlockAudio, { passive: true });
 
     let moveTouchId = null;
@@ -5285,18 +5465,26 @@ function setupControls() {
     window.addEventListener('touchend', releaseShieldTouch, { passive: true });
     window.addEventListener('touchcancel', releaseShieldTouch, { passive: true });
 
-    if (btnKey) {
-        const handleKeyPress = (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            sfx.init();
-            btnKey.classList.add('pressed');
-            tryUnlockCage();
-            setTimeout(() => btnKey.classList.remove('pressed'), 160);
-        };
-        btnKey.addEventListener('touchstart', handleKeyPress, { passive: false });
-        btnKey.addEventListener('mousedown', handleKeyPress);
-    }
+    // Key Action Button (Unlocks Sir Moosimus's Cage in Level 3)
+    btnKey.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        sfx.init();
+        btnKey.classList.add('pressed');
+        tryUnlockCage();
+    }, { passive: false });
+
+    btnKey.addEventListener('touchend', () => {
+        btnKey.classList.remove('pressed');
+    }, { passive: true });
+
+    btnKey.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        sfx.init();
+        btnKey.classList.add('pressed');
+        tryUnlockCage();
+    });
 
     canvas.addEventListener('touchstart', (e) => {
         if (game.state === 'CUTSCENE') {
@@ -5341,6 +5529,7 @@ function setupControls() {
         window.addEventListener('mouseup', () => {
             input[key] = false;
             el.classList.remove('pressed');
+            btnKey.classList.remove('pressed');
         });
     }
     bindMouseBtn(btnLeft, 'left');
@@ -5390,7 +5579,7 @@ function setupControls() {
         const currentLvlNum = game.levelIndex + 1;
         document.getElementById('pause-stats').innerHTML =
             `CURRENT STAGE: LEVEL ${currentLvlNum}/${LEVELS.length}<br>` +
-            `GEMS: ${game.gems} &bull; FLOWERS: ${game.flowers} &bull; SCORE: ${game.score}`;
+            `GEMS: ${game.gems} &bull; SCORE: ${game.score}`;
         document.getElementById('pause-restart-btn').textContent = `RESTART LEVEL ${currentLvlNum}`;
         document.getElementById('pause-screen').classList.remove('hidden');
         sfx.uiChime();
@@ -5404,11 +5593,10 @@ function setupControls() {
         sfx.uiChime();
     }
 
-    function quitToTitle(saveCurrentState = true) {
+    function quitToTitle(saveCurrentStage = true) {
         clearInputs();
-        if (saveCurrentState) {
-            const safeHp = Math.max(1, game.hp > 0 ? game.hp : game.levelStartHp);
-            saveProgress(game.levelIndex + 1, game.score, game.gems, game.flowers, safeHp);
+        if (saveCurrentStage) {
+            saveProgress(game.levelIndex + 1, game.score, game.gems, game.flowers, game.hp);
         }
         saveCharacterSelection(game.character);
         game.state = 'START';
@@ -5421,7 +5609,7 @@ function setupControls() {
         sfx.uiChime();
     }
 
-    function launchAtLevel(levelIdx, resetProgress = false, isRetry = false) {
+    function launchAtLevel(levelIdx, resetProgress = false, isRetry = false, savedHpOverride = null) {
         sfx.init();
         sfx.uiChime();
         resizeCanvas();
@@ -5437,6 +5625,8 @@ function setupControls() {
             game.levelStartFlowers = 0;
             game.levelStartHp = game.maxHp;
             saveProgress(1, 0, 0, 0, game.maxHp);
+        } else if (!isRetry && savedHpOverride !== null) {
+            game.hp = savedHpOverride;
         }
 
         game.state = 'PLAYING';
@@ -5498,24 +5688,17 @@ function setupControls() {
             btnShield.classList.add('pressed');
         }
         if (e.key === 'Shift' || e.key === 'e' || e.key === 'E') {
-            if (game.hasCageKey && isPlayerNearCage()) {
-                tryUnlockCage();
-            } else {
+            if (!tryUnlockCage()) {
                 input.shield = true;
                 btnShield.classList.add('pressed');
             }
-        }
-        if (e.key === 'k' || e.key === 'K') {
-            tryUnlockCage();
         }
         if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W' || e.key === ' ') {
             if (!input.jump) input.jumpJustPressed = true;
             input.jump = true;
         }
         if (e.key === 'f' || e.key === 'F' || e.key === 'Enter') {
-            if (game.hasCageKey && isPlayerNearCage()) {
-                tryUnlockCage();
-            } else {
+            if (!tryUnlockCage()) {
                 shootFireball(null, null);
             }
         }
@@ -5554,7 +5737,7 @@ function setupControls() {
         el.addEventListener('click', wrapped);
     }
 
-    // Start Screen Buttons
+    // Start Screen Buttons ("ENTER THE JUNGLE" / "NEW GAME" opens character selection before cutscene)
     bindDebouncedBtn(document.getElementById('start-btn'), () => {
         openCharacterSelect();
     });
@@ -5570,7 +5753,7 @@ function setupControls() {
         game.levelStartFlowers = saved.flowers;
         game.levelStartScore = saved.score;
         game.levelStartHp = saved.hp;
-        launchAtLevel(saved.level - 1, false, false);
+        launchAtLevel(saved.level - 1, false, false, saved.hp);
     });
 
     // Character Selection Controls
@@ -5626,7 +5809,7 @@ function setupControls() {
         quitToTitle(true);
     });
 
-    // Game Over Buttons (Current-Level Respawn or Quit to Title)
+    // Game Over Buttons (Current-Level Respawn or Quit to Title without overwriting saved progress with 0 HP)
     bindDebouncedBtn(document.getElementById('retry-btn'), () => {
         launchAtLevel(game.levelIndex, false, true);
     });
@@ -5662,7 +5845,7 @@ function initGame() {
     game.character = getSavedCharacter();
     preRenderSprites();
     paintCharacterSelectCanvases();
-    paintPortraitCanvases(game.character);
+    paintPortraitCanvases(game.character, 'king');
     resizeCanvas();
     setupControls();
     refreshStartScreenButtons();
