@@ -5197,7 +5197,7 @@ function update() {
     const targetCamX = player.x + player.w / 2 - virtualWidth * 0.42;
     const maxCamX = Math.max(0, game.levelWidth - virtualWidth);
     game.cameraX += (Math.max(0, Math.min(maxCamX, targetCamX)) - game.cameraX) * 0.14;
-
+}
 
 // --- 6. JUNGLE ENVIRONMENT & ENTITY RENDERING ---
 function drawJungleBackground(lvl) {
