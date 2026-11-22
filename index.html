@@ -828,7 +828,13 @@
                 <div class="hud-item" id="hud-flowers">&#127802; 0</div>
             </div>
             <div class="hud-group">
-                <div class="hud-item" id="hud-level">LVL 1/4</div>
+               <div class="hud-item" id="hud-level">LVL 1/5</div>
+                <div class="hud-item hidden" id="hud-oxygen" style="position: fixed; left: 10px; top: 52px; flex-direction: column; align-items: flex-start; gap: 4px; border-color: #73eff7; background: rgba(10, 28, 38, 0.92); z-index: 14;">
+                    <span style="font-size: clamp(7px, 1.4vw, 9px); color: #73eff7;">O2</span>
+                    <div style="width: 12px; height: 68px; background: #0b1912; border: 2px solid #73eff7; border-radius: 3px; padding: 1px; display: flex; align-items: flex-end;">
+                        <div id="oxygen-bar-fill" style="width: 100%; height: 100%; background: linear-gradient(180deg, #f4f4f4 0%, #73eff7 55%, #41a6f6 100%); transition: height 0.08s linear;"></div>
+                    </div>
+                </div>
                 <button id="mute-btn" class="hud-btn" type="button" aria-label="Toggle Sound">SFX:ON</button>
                 <button id="pause-btn" class="hud-btn hidden" type="button" aria-label="Pause Game">II</button>
             </div>
@@ -917,6 +923,7 @@
             </div>
             <div class="menu-btn-row">
                 <button id="resume-btn" type="button" class="retro-btn primary-green">RESUME</button>
+                <button id="pause-checkpoint-btn" type="button" class="retro-btn primary-green hidden">RESTART FROM CHECKPOINT</button>
                 <button id="pause-restart-btn" type="button" class="retro-btn">RESTART LEVEL 1</button>
                 <button id="save-quit-btn" type="button" class="retro-btn secondary-slate">SAVE &amp; QUIT TO TITLE</button>
             </div>
@@ -1027,7 +1034,8 @@ function getSavedProgress() {
         const rawGems = parseInt(localStorage.getItem(STORAGE_KEYS.GEMS), 10);
         const rawFlowers = parseInt(localStorage.getItem(STORAGE_KEYS.FLOWERS), 10);
         const rawHp = parseInt(localStorage.getItem(STORAGE_KEYS.HP), 10);
-        const level = Number.isFinite(rawLvl) ? Math.max(1, Math.min(4, rawLvl)) : 1;
+        const maxStage = LEVELS.length;
+        const level = Number.isFinite(rawLvl) ? Math.max(1, Math.min(maxStage, rawLvl)) : 1;
         const defaultHp = level === 4 ? 1 : 5;
         const hp = Number.isFinite(rawHp) ? Math.max(1, Math.min(level === 4 ? 1 : 5, rawHp)) : defaultHp;
         return {
@@ -1045,7 +1053,7 @@ function getSavedProgress() {
 
 function saveProgress(levelNum, score, gems, flowers, hp = 5) {
     try {
-        const clampedLvl = Math.max(1, Math.min(4, levelNum));
+        const clampedLvl = Math.max(1, Math.min(LEVELS.length, levelNum));
         const maxAllowedHp = clampedLvl === 4 ? 1 : 5;
         const clampedHp = Math.max(1, Math.min(maxAllowedHp, hp));
         localStorage.setItem(STORAGE_KEYS.LEVEL, String(clampedLvl));
@@ -1476,6 +1484,41 @@ class SoundFX {
         this.playTone(440, 110, 0.6, 'sawtooth', 0.17, 0.05);
     }
 
+    splash(deep = false) {
+        this.playNoise(deep ? 0.28 : 0.14, deep ? 680 : 1250, 'bandpass', deep ? 0.2 : 0.12);
+        this.playTone(deep ? 210 : 340, deep ? 65 : 140, deep ? 0.24 : 0.12, 'triangle', 0.12);
+    }
+
+    logFlip() {
+        this.playTone(190, 95, 0.16, 'sawtooth', 0.14);
+        this.playNoise(0.14, 520, 'lowpass', 0.14, 0.04);
+    }
+
+    bubblePuff() {
+        this.playTone(260 + Math.random() * 140, 520 + Math.random() * 160, 0.06, 'sine', 0.06);
+    }
+
+    piranhaLeap() {
+        this.playTone(240, 620, 0.15, 'sawtooth', 0.13);
+        this.playNoise(0.09, 1400, 'bandpass', 0.1, 0.02);
+    }
+
+    eelZap() {
+        this.playTone(980, 310, 0.12, 'square', 0.11);
+        this.playNoise(0.11, 2600, 'highpass', 0.1, 0.01);
+    }
+
+    checkpointLit() {
+        this.playTone(440, 659.25, 0.1, 'triangle', 0.13, 0);
+        this.playTone(659.25, 880, 0.14, 'triangle', 0.13, 0.07);
+        this.playTone(1174.66, 1318.5, 0.18, 'sine', 0.1, 0.14);
+    }
+
+    drownGasp() {
+        this.playNoise(0.42, 420, 'lowpass', 0.2, 0);
+        this.playTone(220, 52, 0.45, 'sawtooth', 0.16, 0.05);
+    }
+    
     portalEnter() {
         const notes = [392.0, 493.88, 587.33, 783.99, 987.77];
         notes.forEach((f, i) => this.playTone(f, f * 1.03, 0.18, 'sine', 0.14, i * 0.08));
@@ -2932,6 +2975,30 @@ const LEVELS = [
             '#######...############.######.................................#####........................................######............#########..############..#####',
             '#######...############.######.................................#####........................................######............#########..############..#####'
         ]
+    },
+    {
+        name: 'LEVEL 5',
+        subtitle: 'FLOODED AQUEDUCTS',
+        skyTop: '#0b2229',
+        skyMid: '#15434d',
+        skyBottom: '#236d73',
+        canopyBack: '#10343b',
+        canopyFront: '#184e54',
+        toxic: false,
+        map: [
+            '...........................................................................................................................................................',
+            '.........................................................G..G..............................................................................................',
+            '.......................................................=========..........................................G..H..........................................',
+            '......................................................................................................========...........................................',
+            '...................................G..H....................................................................................................................',
+            '..................................======........................................G..H......................................................................',
+            '...............G...............................................................======..........................................G..G..............F...',
+            '..............===...................E........................T.....................................E........................======..........#####',
+            '....P...............^^...E.......LLLLLLLL........~~~~.......#####.......SSSSSSSSSSSSSSSSOSSSSSSSSSSSS.......LLLLLLLL.......~~~~...E.....^^^^...#####',
+            '########..############.#######...LLLLLLLL..E.....~~~~.......#####.......SSSSSSSSSSSSSSSSSSSSSSSSSSSS.......LLLLLLLL..E....~~~~..###############',
+            '########..############.#######.............^^^.~~~~.......#####.......SSSSSSSSSSSSSSSSSSSSSSSSSSSS..................~~~~..###############',
+            '########..############.#######.............###.~~~~.......#####.......SSSSSSSSSSSSSSSSSSSSSSSSSSSS..................~~~~..###############'
+        ]
     }
 ];
 
@@ -2967,9 +3034,20 @@ const game = {
     tiles: [],
     movingPlatforms: [],
     crumblingBlocks: [],
+    waterPools: [],
+    submergedZones: [],
+    oxygenPockets: [],
+    floatingLogs: [],
+    piranhaSpawners: [],
+    checkpoints: [],
+    activeCheckpoint: null,
     vines: [],
     ferns: [],
     toxicSpores: [],
+    oxygen: 100,
+    maxOxygen: 100,
+    inSubmergedZone: false,
+    drowningTimer: 0,
     enemies: [],
     enemyProjectiles: [],
     collectibles: [],
@@ -3019,7 +3097,8 @@ const player = {
     isHanging: false,
     hangSide: 'right',
     hangTile: null,
-    ledgeCooldown: 0
+    ledgeCooldown: 0,
+    inWater: false
 };
 
 const input = {
@@ -3124,9 +3203,24 @@ function loadLevel(index, announce = false, isRetry = false) {
     game.tiles = [];
     game.movingPlatforms = [];
     game.crumblingBlocks = [];
+    game.waterPools = [];
+    game.submergedZones = [];
+    game.oxygenPockets = [];
+    game.floatingLogs = [];
+    game.piranhaSpawners = [];
+    game.checkpoints = [];
     game.vines = [];
     game.ferns = [];
     game.toxicSpores = [];
+    game.oxygen = game.maxOxygen;
+    game.inSubmergedZone = false;
+    game.drowningTimer = 0;
+    player.inWater = false;
+    if (!isRetry) {
+        game.activeCheckpoint = null;
+    }
+    const oxygenHud = document.getElementById('hud-oxygen');
+    if (oxygenHud) oxygenHud.classList.add('hidden');
     game.enemies = [];
     game.enemyProjectiles = [];
     game.collectibles = [];
@@ -3227,6 +3321,90 @@ function loadLevel(index, announce = false, isRetry = false) {
                     state: 'solid',
                     timer: 0,
                     respawnTimer: 0
+                });
+                } else if (ch === '~') {
+                game.waterPools.push({
+                    x: wx,
+                    y: wy + 4,
+                    w: TILE_SIZE,
+                    h: TILE_SIZE - 4,
+                    surfaceY: wy + 4,
+                    bubbleTimer: 20 + ((c * 19 + r * 7) % 55)
+                });
+                if ((c + r) % 2 === 0) {
+                    game.piranhaSpawners.push({
+                        x: wx + 2,
+                        surfaceY: wy + 4,
+                        timer: 45 + ((c * 23) % 70),
+                        cooldown: 115 + ((c * 13) % 45)
+                    });
+                }
+            } else if (ch === 'S') {
+                game.submergedZones.push({
+                    x: wx,
+                    y: wy,
+                    w: TILE_SIZE,
+                    h: TILE_SIZE,
+                    surfaceY: wy
+                });
+                // Spawn electric eels in submerged ruin channels at spacing intervals
+                if (c > 0 && lvl.map[r][c - 1] !== 'S' && (c % 7 === 1)) {
+                    game.enemies.push({
+                        kind: 'eel',
+                        x: wx + 4,
+                        y: wy + 3,
+                        baseY: wy + 3,
+                        w: 18,
+                        h: 10,
+                        vx: 0.95,
+                        startX: wx + 4,
+                        patrolRange: 48,
+                        phase: c * 0.7,
+                        attackCooldown: 45,
+                        bounceTimer: 0,
+                        alive: true
+                    });
+                }
+            } else if (ch === 'O') {
+                game.oxygenPockets.push({
+                    x: wx,
+                    y: wy,
+                    w: TILE_SIZE,
+                    h: TILE_SIZE,
+                    bobPhase: c * 0.9
+                });
+            } else if (ch === 'L') {
+                // Group consecutive 'L' tiles into 4-tile-wide (64px) floating logs
+                const prevSame = (c > 0 && lvl.map[r][c - 1] === 'L');
+                if (!prevSame) {
+                    let span = 1;
+                    while (c + span < cols && lvl.map[r][c + span] === 'L') {
+                        span++;
+                    }
+                    const logWidth = Math.max(4 * TILE_SIZE, span * TILE_SIZE);
+                    game.floatingLogs.push({
+                        x: wx,
+                        y: wy + 3,
+                        baseY: wy + 3,
+                        w: logWidth,
+                        h: 10,
+                        bobOffset: 0,
+                        bobVel: 0,
+                        flipped: false,
+                        flipTimer: 0,
+                        flipAngle: 0,
+                        flipDir: 1,
+                        respawnTimer: 0
+                    });
+                }
+            } else if (ch === 'T') {
+                game.checkpoints.push({
+                    x: wx + 2,
+                    y: wy - 14,
+                    w: 12,
+                    h: 30,
+                    activated: false,
+                    glowIntensity: 0
                 });
             } else if (ch === '^') {
                 const belowCh = (r + 1 < rows) ? lvl.map[r + 1][c] : '.';
@@ -3378,7 +3556,19 @@ function loadLevel(index, announce = false, isRetry = false) {
         }
     }
 
+    if (isRetry && game.activeCheckpoint) {
+        player.x = game.activeCheckpoint.x;
+        player.y = game.activeCheckpoint.y;
+        player.spawnX = game.activeCheckpoint.x;
+        player.spawnY = game.activeCheckpoint.y;
+        player.vx = 0;
+        player.vy = 0;
+        player.grounded = false;
+        player.jumpsRemaining = player.maxJumps;
+    }
+
     syncKeyButtonAppearance();
+    updatePauseCheckpointButton();
     updateHUD();
     if (announce) {
         if (isToxicLevel) {
@@ -3510,7 +3700,8 @@ function shootFireball(clientX = null, clientY = null) {
     const isIce = game.character === 'aurora';
     const originX = player.x + player.w / 2;
     const originY = player.y + player.h * 0.45;
-    const speed = isIce ? 5.1 : 4.7;
+    const baseSpeed = isIce ? 5.1 : 4.7;
+    const speed = player.inWater ? baseSpeed * 0.56 : baseSpeed;
     let vx, vy;
 
     if (clientX !== null && clientY !== null) {
@@ -3793,6 +3984,93 @@ function update() {
         }
     }
 
+    // Floating Logs (4 tiles wide: bob under player weight, flip on edge landings)
+    for (const log of game.floatingLogs) {
+        if (log.flipped) {
+            log.flipTimer--;
+            log.flipAngle += log.flipDir * 0.24;
+            log.y += 1.4;
+            if (game.frameCount % 3 === 0) {
+                spawnParticles(log.x + log.w / 2, log.y + log.h, ['#73eff7', '#a7f070', '#7a444a'], 2, 1.8);
+            }
+            if (log.flipTimer <= 0) {
+                log.flipped = false;
+                log.flipAngle = 0;
+                log.y = log.baseY + 8;
+                log.bobOffset = 8;
+                log.bobVel = 0;
+                log.respawnTimer = 150;
+            }
+            continue;
+        }
+
+        if (log.respawnTimer > 0) {
+            log.respawnTimer--;
+        }
+
+        const standingOnLog = (
+            game.state === 'PLAYING' &&
+            !player.isHanging &&
+            player.vy >= 0 &&
+            player.x + player.w > log.x + 2 &&
+            player.x < log.x + log.w - 2 &&
+            Math.abs((player.y + player.h) - log.y) <= 3
+        );
+
+        const targetBob = standingOnLog ? 3.5 : Math.sin(game.frameCount * 0.06 + log.x * 0.04) * 1.4;
+        log.bobVel += (targetBob - log.bobOffset) * 0.14;
+        log.bobVel *= 0.82;
+        log.bobOffset += log.bobVel;
+        log.y = log.baseY + log.bobOffset;
+    }
+
+    // Non-swimmable Water Pools: periodic bubbles + jumping piranha leaps
+    for (const pool of game.waterPools) {
+        pool.bubbleTimer--;
+        if (pool.bubbleTimer <= 0) {
+            pool.bubbleTimer = 38 + Math.floor(Math.random() * 45);
+            spawnParticles(
+                pool.x + 2 + Math.random() * (pool.w - 4),
+                pool.surfaceY + 2,
+                ['#73eff7', '#f4f4f4'],
+                2,
+                0.9
+            );
+            if (Math.hypot((pool.x + pool.w / 2) - (player.x + player.w / 2), pool.surfaceY - player.y) < 140) {
+                sfx.bubblePuff();
+            }
+        }
+    }
+
+    for (const spawner of game.piranhaSpawners) {
+        if (spawner.timer > 0) {
+            spawner.timer--;
+            if (spawner.timer <= 22 && spawner.timer % 5 === 0) {
+                spawnParticles(spawner.x + 6, spawner.surfaceY + 1, ['#f4f4f4', '#73eff7'], 2, 1.1);
+            }
+            if (spawner.timer === 0) {
+                const distP = Math.abs(spawner.x - player.x);
+                if (distP < 220) {
+                    game.enemies.push({
+                        kind: 'piranha',
+                        x: spawner.x,
+                        y: spawner.surfaceY - 4,
+                        w: 14,
+                        h: 12,
+                        vx: (player.x + player.w / 2 < spawner.x + 6 ? -1 : 1) * 0.85,
+                        vy: -4.55,
+                        surfaceY: spawner.surfaceY,
+                        bounceTimer: 0,
+                        alive: true
+                    });
+                    if (distP < 170) sfx.piranhaLeap();
+                    spawnParticles(spawner.x + 6, spawner.surfaceY, ['#73eff7', '#f4f4f4'], 6, 2.0);
+                }
+                spawner.timer = spawner.cooldown;
+            }
+        }
+    }
+
     if (game.state === 'DYING') {
         game.deathTimer--;
 
@@ -3858,6 +4136,21 @@ function update() {
                 game.state = 'PLAYING';
                 loadLevel(game.levelIndex, true, false);
             }
+        }
+        return;
+    }
+    
+    if (game.state === 'DROWNING') {
+        game.drowningTimer--;
+        player.vx *= 0.85;
+        player.vy = 0.65;
+        player.y += player.vy;
+        if (game.frameCount % 5 === 0) {
+            spawnParticles(player.x + player.w / 2, player.y + 4, ['#73eff7', '#f4f4f4'], 3, 1.6);
+        }
+        if (game.drowningTimer <= 0) {
+            game.state = 'PLAYING';
+            hurtPlayer(null, true);
         }
         return;
     }
@@ -4106,6 +4399,139 @@ function update() {
                     player.y = cb.y + cb.h;
                     player.vy = 0;
                 }
+            }
+        }
+
+        // Floating Log collision (4-tile log bobs & flips if landing near left/right edge)
+        for (const log of game.floatingLogs) {
+            if (log.flipped) continue;
+            const relX = (player.x + player.w / 2) - log.x;
+            const onEdge = relX <= 14 || relX >= (log.w - 14);
+            if (
+                player.vy >= 0 &&
+                prevBottom <= log.y + 6 &&
+                player.y + player.h >= log.y &&
+                player.x + player.w > log.x + 1 &&
+                player.x < log.x + log.w - 1
+            ) {
+                if (onEdge) {
+                    log.flipped = true;
+                    log.flipTimer = 28;
+                    log.flipDir = relX < log.w / 2 ? -1 : 1;
+                    player.grounded = false;
+                    player.vy = 0.8;
+                    sfx.logFlip();
+                    sfx.splash(false);
+                    spawnParticles(player.x + player.w / 2, log.y + 4, ['#73eff7', '#a7f070', '#7a444a'], 10, 2.6);
+                } else {
+                    player.y = log.y - player.h;
+                    player.vy = 0;
+                    player.grounded = true;
+                    player.jumpsRemaining = player.maxJumps;
+                    player.doubleJumpSpinTimer = 0;
+                    log.bobVel = Math.max(log.bobVel, 1.35);
+                }
+            }
+        }
+
+        // Non-swimmable Water Pool check -> Drowning sequence & pitfall-style respawn
+        for (const pool of game.waterPools) {
+            const probeBox = { x: player.x + 2, y: player.y + player.h - 4, w: player.w - 4, h: 5 };
+            if (checkAABB(probeBox, pool)) {
+                game.state = 'DROWNING';
+                game.drowningTimer = 42;
+                player.isHanging = false;
+                player.shieldActive = false;
+                clearInputs();
+                sfx.splash(true);
+                sfx.drownGasp();
+                spawnParticles(player.x + player.w / 2, pool.surfaceY, ['#73eff7', '#41a6f6', '#f4f4f4'], 18, 3.2);
+                return;
+            }
+        }
+
+        // Swimmable Submerged Ruin Zones (slower move, higher jump, slower fall, oxygen drain/refill)
+        const wasInWater = player.inWater;
+        player.inWater = game.submergedZones.some(z => checkAABB(player, z));
+        if (player.inWater !== wasInWater) {
+            sfx.splash(!player.inWater);
+            spawnParticles(player.x + player.w / 2, player.y + player.h / 2, ['#73eff7', '#f4f4f4'], 8, 2.2);
+            if (player.inWater) {
+                player.jumpsRemaining = player.maxJumps;
+                player.vy = Math.min(player.vy, 1.4);
+            }
+        }
+
+        const inPocket = game.oxygenPockets.some(p => checkAABB(player, p));
+        const oxygenHudEl = document.getElementById('hud-oxygen');
+        const oxygenFillEl = document.getElementById('oxygen-bar-fill');
+        if (player.inWater) {
+            if (inPocket) {
+                game.oxygen = Math.min(game.maxOxygen, game.oxygen + 2.8);
+                if (game.frameCount % 6 === 0) {
+                    spawnParticles(player.x + player.w / 2, player.y + 2, ['#f4f4f4', '#73eff7'], 2, 1.4);
+                }
+            } else {
+                game.oxygen = Math.max(0, game.oxygen - 0.34);
+            }
+            if (oxygenHudEl) oxygenHudEl.classList.remove('hidden');
+            if (oxygenFillEl) oxygenFillEl.style.height = `${Math.round((game.oxygen / game.maxOxygen) * 100)}%`;
+
+            if (game.oxygen <= 0) {
+                game.hp = 0;
+                updateHUD();
+                triggerWizardDeath();
+                return;
+            }
+        } else {
+            if (game.oxygen < game.maxOxygen) {
+                game.oxygen = Math.min(game.maxOxygen, game.oxygen + 0.9);
+                if (oxygenHudEl) oxygenHudEl.classList.remove('hidden');
+                if (oxygenFillEl) oxygenFillEl.style.height = `${Math.round((game.oxygen / game.maxOxygen) * 100)}%`;
+                if (game.oxygen >= game.maxOxygen && oxygenHudEl) {
+                    oxygenHudEl.classList.add('hidden');
+                }
+            } else if (oxygenHudEl) {
+                oxygenHudEl.classList.add('hidden');
+            }
+        }
+
+        // Apply or restore water physics smoothly so leaving water returns physics to exact normal
+        if (player.inWater) {
+            player.speed = 1.28;
+            player.jumpForce = -5.75;
+            player.doubleJumpForce = -5.35;
+            player.gravity = 0.085;
+            player.maxFallSpeed = 1.75;
+            if (player.grounded || game.frameCount % 18 === 0) {
+                player.jumpsRemaining = player.maxJumps;
+            }
+        } else {
+            player.speed = 2.1;
+            player.jumpForce = -4.95;
+            player.doubleJumpForce = -4.6;
+            player.gravity = 0.22;
+            player.maxFallSpeed = 5.5;
+        }
+
+        // Checkpoint Rune Monoliths (glow red for Orion, blue for Aurora once passed)
+        for (const cp of game.checkpoints) {
+            if (!cp.activated && (player.x + player.w) >= cp.x + 2) {
+                cp.activated = true;
+                cp.glowIntensity = 1;
+                game.activeCheckpoint = { x: cp.x + 2, y: cp.y + cp.h - player.h - 2 };
+                player.spawnX = game.activeCheckpoint.x;
+                player.spawnY = game.activeCheckpoint.y;
+                game.levelStartScore = game.score;
+                game.levelStartGems = game.gems;
+                game.levelStartFlowers = game.flowers;
+                game.levelStartHp = game.hp;
+                saveProgress(game.levelIndex + 1, game.score, game.gems, game.flowers, game.hp);
+                updatePauseCheckpointButton();
+                sfx.checkpointLit();
+                const runeColors = game.character === 'aurora' ? ['#73eff7', '#41a6f6', '#ffffff'] : ['#ff5964', '#ef7d57', '#ffcd75'];
+                spawnParticles(cp.x + cp.w / 2, cp.y + 10, runeColors, 16, 2.8);
+                showLevelBanner('CHECKPOINT REACHED!', game.character === 'aurora' ? 'BLUE RUNES IGNITED' : 'RED RUNES IGNITED', 1600);
             }
         }
 
@@ -4489,6 +4915,53 @@ function update() {
                     enemy.vx = (enemy.vx >= 0 ? 1 : -1) * 1.12;
                     enemy.vy = 0;
                 }
+            } 
+            } else if (enemy.kind === 'piranha') {
+            enemy.x += enemy.vx;
+            enemy.y += enemy.vy;
+            enemy.vy += 0.16;
+            if (enemy.y > enemy.surfaceY + 10 && enemy.vy > 0) {
+                enemy.alive = false;
+                sfx.splash(false);
+                spawnParticles(enemy.x + enemy.w / 2, enemy.surfaceY, ['#73eff7', '#f4f4f4'], 6, 2.0);
+            }
+        } else if (enemy.kind === 'eel') {
+            // Electric eels ignore water physics resistance and shoot bolts when player is near
+            const eelSpeed = 1.05;
+            enemy.x += (enemy.vx >= 0 ? 1 : -1) * eelSpeed;
+            enemy.phase += 0.12;
+            enemy.y = enemy.baseY + Math.sin(enemy.phase) * 5;
+
+            const minX = Math.max(4, enemy.startX - enemy.patrolRange);
+            const maxX = Math.min(game.levelWidth - 4 - enemy.w, enemy.startX + enemy.patrolRange);
+            if (enemy.x <= minX) {
+                enemy.x = minX;
+                enemy.vx = eelSpeed;
+            } else if (enemy.x >= maxX) {
+                enemy.x = maxX;
+                enemy.vx = -eelSpeed;
+            }
+
+            if (enemy.attackCooldown > 0) enemy.attackCooldown--;
+            if (distToPlayer < 120 && enemy.attackCooldown <= 0) {
+                enemy.attackCooldown = 68;
+                const ex = enemy.x + enemy.w / 2;
+                const ey = enemy.y + enemy.h / 2;
+                const dx = (player.x + player.w / 2) - ex;
+                const dy = (player.y + player.h / 2) - ey;
+                const dist = Math.hypot(dx, dy) || 1;
+                game.enemyProjectiles.push({
+                    kind: 'bolt',
+                    x: ex - 3,
+                    y: ey - 3,
+                    w: 6,
+                    h: 6,
+                    vx: (dx / dist) * 2.8,
+                    vy: (dy / dist) * 2.8,
+                    life: 110
+                });
+                sfx.eelZap();
+                spawnParticles(ex, ey, ['#73eff7', '#ffcd75'], 5, 1.8);
             } else {
                 const speed = Math.abs(enemy.vx) || 1.12;
                 const dir = enemy.vx >= 0 ? 1 : -1;
@@ -5046,6 +5519,79 @@ function render() {
         drawTile(tile);
     }
 
+    // Submerged ruin water & non-swimmable turquoise pools
+    for (const sz of game.submergedZones) {
+        const sx = Math.round(sz.x);
+        const sy = Math.round(sz.y);
+        ctx.fillStyle = 'rgba(28, 145, 168, 0.46)';
+        ctx.fillRect(sx, sy, sz.w, sz.h);
+        ctx.fillStyle = 'rgba(115, 239, 247, 0.55)';
+        ctx.fillRect(sx, sy, sz.w, 2);
+    }
+
+    for (const pool of game.waterPools) {
+        const px = Math.round(pool.x);
+        const py = Math.round(pool.y);
+        ctx.fillStyle = 'rgba(16, 178, 184, 0.76)';
+        ctx.fillRect(px, py, pool.w, pool.h);
+        const wave = Math.round(Math.sin(game.frameCount * 0.12 + px * 0.25));
+        ctx.fillStyle = '#73eff7';
+        ctx.fillRect(px, py + wave, pool.w, 2);
+    }
+
+    // Underwater oxygen pockets
+    for (const pocket of game.oxygenPockets) {
+        const ox = Math.round(pocket.x);
+        const oy = Math.round(pocket.y + Math.sin(game.frameCount * 0.08 + pocket.bobPhase) * 2);
+        ctx.fillStyle = 'rgba(115, 239, 247, 0.28)';
+        ctx.fillRect(ox + 1, oy + 1, pocket.w - 2, pocket.h - 2);
+        ctx.fillStyle = '#f4f4f4';
+        ctx.fillRect(ox + 4, oy + 4, 3, 3);
+        ctx.fillRect(ox + 9, oy + 7, 2, 2);
+    }
+
+    // Stone monolith checkpoints with runes (glow red for Orion, blue for Aurora once passed)
+    for (const cp of game.checkpoints) {
+        const cx = Math.round(cp.x);
+        const cy = Math.round(cp.y);
+        ctx.fillStyle = '#475569';
+        ctx.fillRect(cx, cy + 4, cp.w, cp.h - 4);
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillRect(cx, cy + 4, 2, cp.h - 4);
+        ctx.fillStyle = '#64748b';
+        ctx.fillRect(cx + 2, cy, cp.w - 4, 4);
+
+        const activeColor = game.character === 'aurora' ? '#73eff7' : '#ff3b5c';
+        const runeColor = cp.activated ? activeColor : '#26293a';
+        if (cp.activated) {
+            ctx.fillStyle = game.character === 'aurora' ? 'rgba(115, 239, 247, 0.26)' : 'rgba(255, 59, 92, 0.26)';
+            ctx.fillRect(cx - 3, cy + 4, cp.w + 6, 20);
+        }
+        ctx.fillStyle = runeColor;
+        ctx.fillRect(cx + 5, cy + 8, 2, 4);
+        ctx.fillRect(cx + 4, cy + 14, 4, 2);
+        ctx.fillRect(cx + 5, cy + 18, 2, 4);
+    }
+
+    // 4-tile-long floating logs
+    for (const log of game.floatingLogs) {
+        if (log.respawnTimer > 0 && !log.flipped) continue;
+        const lx = Math.round(log.x + log.w / 2);
+        const ly = Math.round(log.y + log.h / 2);
+        ctx.save();
+        ctx.translate(lx, ly);
+        if (log.flipped) ctx.rotate(log.flipAngle);
+
+        ctx.fillStyle = '#5c3324';
+        ctx.fillRect(-log.w / 2, -log.h / 2, log.w, log.h);
+        ctx.fillStyle = '#8c5230';
+        ctx.fillRect(-log.w / 2 + 1, -log.h / 2 + 1, log.w - 2, log.h - 3);
+        ctx.fillStyle = '#38b764';
+        ctx.fillRect(-log.w / 2 + 6, -log.h / 2, 8, 2);
+        ctx.fillRect(log.w / 2 - 16, -log.h / 2, 7, 2);
+        ctx.restore();
+    }
+    
     for (const mp of game.movingPlatforms) {
         const mx = Math.round(mp.x);
         const my = Math.round(mp.y);
@@ -5172,7 +5718,28 @@ function render() {
                 spawnParticles(enemy.x + enemy.w / 2, enemy.y + enemy.h - 2, ['#00e676', '#a7f070'], 1, 0.8);
             }
         }
-    }
+    } else if (enemy.kind === 'piranha') {
+            const px = Math.round(enemy.x);
+            const py = Math.round(enemy.y);
+            ctx.fillStyle = enemy.vx < 0 ? '#ef7d57' : '#38b764';
+            ctx.fillRect(px + 2, py + 2, 10, 8);
+            ctx.fillStyle = '#f4f4f4';
+            ctx.fillRect(enemy.vx < 0 ? px + 2 : px + 10, py + 4, 2, 2);
+            ctx.fillRect(enemy.vx < 0 ? px + 5 : px + 7, py + 7, 2, 2);
+            ctx.fillStyle = '#14151f';
+            ctx.fillRect(enemy.vx < 0 ? px + 4 : px + 8, py + 3, 2, 2);
+        } else if (enemy.kind === 'eel') {
+            const ex = Math.round(enemy.x);
+            const ey = Math.round(enemy.y);
+            const waveY = Math.round(Math.sin(game.frameCount * 0.25 + enemy.phase) * 2);
+            ctx.fillStyle = '#41a6f6';
+            ctx.fillRect(ex, ey, 12, 6);
+            ctx.fillStyle = '#73eff7';
+            ctx.fillRect(ex + 2, ey + 1, 8, 3);
+            ctx.fillRect(enemy.vx >= 0 ? ex - 5 : ex + 12, ey + 1 + waveY, 5, 3);
+            ctx.fillStyle = '#ffcd75';
+            ctx.fillRect(enemy.vx >= 0 ? ex + 9 : ex + 2, ey + 1, 2, 2);
+        }
 
     if (game.state === 'DYING') {
         if (game.deathTimer > 35 && spriteCache.wizardSkeleton) {
@@ -5302,7 +5869,17 @@ function render() {
             ctx.fillRect(8, -1, 2, 2);
 
             ctx.restore();
+            
+            } else if (ep.kind === 'bolt') {
+            ctx.fillStyle = '#41a6f6';
+            ctx.fillRect(ex, ey, ep.w, ep.h);
+            ctx.fillStyle = '#73eff7';
+            ctx.fillRect(ex + 1, ey + 1, ep.w - 2, ep.h - 2);
+            ctx.fillStyle = '#f4f4f4';
+            ctx.fillRect(ex + 2, ey + 2, 2, 2);
+            
         } else {
+            
             const pulse = Math.sin(game.frameCount * 0.35 + ex * 0.2) * 0.15 + 0.35;
 
             ctx.fillStyle = `rgba(0, 230, 118, ${pulse.toFixed(2)})`;
@@ -5406,6 +5983,17 @@ function setupControls() {
 
     let moveTouchId = null;
 
+    function updatePauseCheckpointButton() {
+        const cpBtn = document.getElementById('pause-checkpoint-btn');
+        if (!cpBtn) return;
+        cpBtn.classList.toggle('hidden', !game.activeCheckpoint);
+    }
+
+    bindDebouncedBtn(document.getElementById('pause-checkpoint-btn'), () => {
+        if (!game.activeCheckpoint) return;
+        launchAtLevel(game.levelIndex, false, true);
+    });
+    
     function updateDirectionFromX(clientX) {
         const leftRect = btnLeft.getBoundingClientRect();
         const rightRect = btnRight.getBoundingClientRect();
