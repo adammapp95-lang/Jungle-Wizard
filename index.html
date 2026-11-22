@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Jungle Wizard</title>
@@ -795,6 +796,7 @@
             100% { transform: rotate(0deg); }
         }
     </style>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' fill='%23102a1d'/><polygon points='8,2 14,13 2,13' fill='%2338b764'/></svg>">
 </head>
 <body>
 
@@ -3683,6 +3685,11 @@ function updateHUD() {
         pauseBtn.textContent = game.state === 'PAUSED' ? '▶' : 'II';
     }
 }
+    function updatePauseCheckpointButton() {
+    const cpBtn = document.getElementById('pause-checkpoint-btn');
+    if (!cpBtn) return;
+    cpBtn.classList.toggle('hidden', !game.activeCheckpoint);
+}
 
 function checkAABB(a, b) {
     return (
@@ -6358,11 +6365,6 @@ function setupControls() {
         el.addEventListener('touchstart', wrapped, { passive: false });
         el.addEventListener('pointerdown', wrapped);
         el.addEventListener('click', wrapped);
-    }
-    function updatePauseCheckpointButton() {
-        const cpBtn = document.getElementById('pause-checkpoint-btn');
-        if (!cpBtn) return;
-        cpBtn.classList.toggle('hidden', !game.activeCheckpoint);
     }
 
     bindDebouncedBtn(document.getElementById('pause-checkpoint-btn'), () => {
