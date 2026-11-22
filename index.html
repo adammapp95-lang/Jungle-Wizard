@@ -4914,6 +4914,20 @@ function update() {
                 if (enemy.bounceTimer === 0) {
                     enemy.vx = (enemy.vx >= 0 ? 1 : -1) * 1.12;
                     enemy.vy = 0;
+                }else {
+                const speed = Math.abs(enemy.vx) || 1.12;
+                const dir = enemy.vx >= 0 ? 1 : -1;
+                enemy.vx = dir * speed;
+                enemy.x += enemy.vx;
+                enemy.flyPhase += 0.075;
+                enemy.y = enemy.baseY + Math.sin(enemy.flyPhase) * 11;
+
+                let hitWall = false;
+                for (const tile of game.tiles) {
+                    if (tile.type !== 'spike' && !tile.oneWay && checkAABB(enemy, tile)) {
+                        hitWall = true;
+                        break;
+                    }
                 }
             } 
             } else if (enemy.kind === 'piranha') {
@@ -4962,21 +4976,7 @@ function update() {
                 });
                 sfx.eelZap();
                 spawnParticles(ex, ey, ['#73eff7', '#ffcd75'], 5, 1.8);
-            } else {
-                const speed = Math.abs(enemy.vx) || 1.12;
-                const dir = enemy.vx >= 0 ? 1 : -1;
-                enemy.vx = dir * speed;
-                enemy.x += enemy.vx;
-                enemy.flyPhase += 0.075;
-                enemy.y = enemy.baseY + Math.sin(enemy.flyPhase) * 11;
-
-                let hitWall = false;
-                for (const tile of game.tiles) {
-                    if (tile.type !== 'spike' && !tile.oneWay && checkAABB(enemy, tile)) {
-                        hitWall = true;
-                        break;
-                    }
-                }
+            } 
 
                 const minPatrolX = Math.max(4, enemy.startX - enemy.patrolRange);
                 const maxPatrolX = Math.min(game.levelWidth - 4 - enemy.w, enemy.startX + enemy.patrolRange);
@@ -5717,7 +5717,6 @@ function render() {
             if (isToxicPtero && game.frameCount % 18 === 0) {
                 spawnParticles(enemy.x + enemy.w / 2, enemy.y + enemy.h - 2, ['#00e676', '#a7f070'], 1, 0.8);
             }
-        }
     } else if (enemy.kind === 'piranha') {
             const px = Math.round(enemy.x);
             const py = Math.round(enemy.y);
@@ -5897,7 +5896,7 @@ function render() {
             ctx.fillRect(ex + 2, ey + 2, 2, 2);
         }
     }
-
+    }
     // Hero Projectiles (Orion's Fireballs vs Aurora's Ice Blasts)
     for (const fb of game.fireballs) {
         const fx = Math.round(fb.x);
@@ -5982,17 +5981,6 @@ function setupControls() {
     window.addEventListener('keydown', unlockAudio, { passive: true });
 
     let moveTouchId = null;
-
-    function updatePauseCheckpointButton() {
-        const cpBtn = document.getElementById('pause-checkpoint-btn');
-        if (!cpBtn) return;
-        cpBtn.classList.toggle('hidden', !game.activeCheckpoint);
-    }
-
-    bindDebouncedBtn(document.getElementById('pause-checkpoint-btn'), () => {
-        if (!game.activeCheckpoint) return;
-        launchAtLevel(game.levelIndex, false, true);
-    });
     
     function updateDirectionFromX(clientX) {
         const leftRect = btnLeft.getBoundingClientRect();
@@ -6372,6 +6360,16 @@ function setupControls() {
         el.addEventListener('pointerdown', wrapped);
         el.addEventListener('click', wrapped);
     }
+    function updatePauseCheckpointButton() {
+        const cpBtn = document.getElementById('pause-checkpoint-btn');
+        if (!cpBtn) return;
+        cpBtn.classList.toggle('hidden', !game.activeCheckpoint);
+    }
+
+    bindDebouncedBtn(document.getElementById('pause-checkpoint-btn'), () => {
+        if (!game.activeCheckpoint) return;
+        launchAtLevel(game.levelIndex, false, true);
+    });
 
     // Start Screen Buttons ("ENTER THE JUNGLE" / "NEW GAME" opens character selection before cutscene)
     bindDebouncedBtn(document.getElementById('start-btn'), () => {
