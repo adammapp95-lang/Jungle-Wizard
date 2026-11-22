@@ -4896,7 +4896,7 @@ function update() {
                     sfx.goblinRamble(1 - distToPlayer / 160);
                 }
             }
-        } else if (enemy.kind === 'pterodactyl') {
+   } else if (enemy.kind === 'pterodactyl') {
             if (enemy.bounceTimer > 0) {
                 enemy.bounceTimer--;
                 enemy.x += enemy.vx;
@@ -4914,7 +4914,7 @@ function update() {
                 if (enemy.bounceTimer === 0) {
                     enemy.vx = (enemy.vx >= 0 ? 1 : -1) * 1.12;
                     enemy.vy = 0;
-                } 
+                }
             } else {
                 const speed = Math.abs(enemy.vx) || 1.12;
                 const dir = enemy.vx >= 0 ? 1 : -1;
@@ -4929,55 +4929,7 @@ function update() {
                         hitWall = true;
                         break;
                     }
-                } 
-            }
-            } else if (enemy.kind === 'piranha') {
-            enemy.x += enemy.vx;
-            enemy.y += enemy.vy;
-            enemy.vy += 0.16;
-            if (enemy.y > enemy.surfaceY + 10 && enemy.vy > 0) {
-                enemy.alive = false;
-                sfx.splash(false);
-                spawnParticles(enemy.x + enemy.w / 2, enemy.surfaceY, ['#73eff7', '#f4f4f4'], 6, 2.0);
-            }
-        } else if (enemy.kind === 'eel') {
-            // Electric eels ignore water physics resistance and shoot bolts when player is near
-            const eelSpeed = 1.05;
-            enemy.x += (enemy.vx >= 0 ? 1 : -1) * eelSpeed;
-            enemy.phase += 0.12;
-            enemy.y = enemy.baseY + Math.sin(enemy.phase) * 5;
-
-            const minX = Math.max(4, enemy.startX - enemy.patrolRange);
-            const maxX = Math.min(game.levelWidth - 4 - enemy.w, enemy.startX + enemy.patrolRange);
-            if (enemy.x <= minX) {
-                enemy.x = minX;
-                enemy.vx = eelSpeed;
-            } else if (enemy.x >= maxX) {
-                enemy.x = maxX;
-                enemy.vx = -eelSpeed;
-            }
-
-            if (enemy.attackCooldown > 0) enemy.attackCooldown--;
-            if (distToPlayer < 120 && enemy.attackCooldown <= 0) {
-                enemy.attackCooldown = 68;
-                const ex = enemy.x + enemy.w / 2;
-                const ey = enemy.y + enemy.h / 2;
-                const dx = (player.x + player.w / 2) - ex;
-                const dy = (player.y + player.h / 2) - ey;
-                const dist = Math.hypot(dx, dy) || 1;
-                game.enemyProjectiles.push({
-                    kind: 'bolt',
-                    x: ex - 3,
-                    y: ey - 3,
-                    w: 6,
-                    h: 6,
-                    vx: (dx / dist) * 2.8,
-                    vy: (dy / dist) * 2.8,
-                    life: 110
-                });
-                sfx.eelZap();
-                spawnParticles(ex, ey, ['#73eff7', '#ffcd75'], 5, 1.8);
-            } 
+                }
 
                 const minPatrolX = Math.max(4, enemy.startX - enemy.patrolRange);
                 const maxPatrolX = Math.min(game.levelWidth - 4 - enemy.w, enemy.startX + enemy.patrolRange);
@@ -5006,7 +4958,6 @@ function update() {
             const isFacingWizard = (enemy.vx >= 0 && playerCenterX >= pteroCenterX) ||
                                    (enemy.vx < 0 && playerCenterX < pteroCenterX);
 
-            // Dinosaur roar only when close to the player AND flying toward the player
             if (distToPlayer < 145 && isFacingWizard) {
                 enemy.chirpTimer--;
                 if (enemy.chirpTimer <= 0) {
@@ -5043,6 +4994,52 @@ function update() {
                 }
             } else if (game.levelIndex >= 2) {
                 enemy.shootTimer = Math.min(enemy.shootTimer, 14);
+            }
+        } else if (enemy.kind === 'piranha') {
+            enemy.x += enemy.vx;
+            enemy.y += enemy.vy;
+            enemy.vy += 0.16;
+            if (enemy.y > enemy.surfaceY + 10 && enemy.vy > 0) {
+                enemy.alive = false;
+                sfx.splash(false);
+                spawnParticles(enemy.x + enemy.w / 2, enemy.surfaceY, ['#73eff7', '#f4f4f4'], 6, 2.0);
+            }
+        } else if (enemy.kind === 'eel') {
+            const eelSpeed = 1.05;
+            enemy.x += (enemy.vx >= 0 ? 1 : -1) * eelSpeed;
+            enemy.phase += 0.12;
+            enemy.y = enemy.baseY + Math.sin(enemy.phase) * 5;
+
+            const minX = Math.max(4, enemy.startX - enemy.patrolRange);
+            const maxX = Math.min(game.levelWidth - 4 - enemy.w, enemy.startX + enemy.patrolRange);
+            if (enemy.x <= minX) {
+                enemy.x = minX;
+                enemy.vx = eelSpeed;
+            } else if (enemy.x >= maxX) {
+                enemy.x = maxX;
+                enemy.vx = -eelSpeed;
+            }
+
+            if (enemy.attackCooldown > 0) enemy.attackCooldown--;
+            if (distToPlayer < 120 && enemy.attackCooldown <= 0) {
+                enemy.attackCooldown = 68;
+                const ex = enemy.x + enemy.w / 2;
+                const ey = enemy.y + enemy.h / 2;
+                const dx = (player.x + player.w / 2) - ex;
+                const dy = (player.y + player.h / 2) - ey;
+                const dist = Math.hypot(dx, dy) || 1;
+                game.enemyProjectiles.push({
+                    kind: 'bolt',
+                    x: ex - 3,
+                    y: ey - 3,
+                    w: 6,
+                    h: 6,
+                    vx: (dx / dist) * 2.8,
+                    vy: (dy / dist) * 2.8,
+                    life: 110
+                });
+                sfx.eelZap();
+                spawnParticles(ex, ey, ['#73eff7', '#ffcd75'], 5, 1.8);
             }
         }
 
